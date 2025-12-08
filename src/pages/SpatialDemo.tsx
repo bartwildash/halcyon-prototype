@@ -1,7 +1,7 @@
 // Halcyon Spatial Workspace
 // Infinite canvas for spatial thinking with entity cards
 
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Space } from '../components/spatial/Space'
 import { useSpatialStore } from '../stores/spatialStore'
 import { PrimitivesToggle } from '../components/ui/PrimitivesToggle'
@@ -30,7 +30,7 @@ interface ViewportPosition {
 }
 
 export function SpatialDemo() {
-  const { space, createCard, updateCard, createConnection, setPan, setZoom, deleteAllCards } = useSpatialStore()
+  const { space, createCard, updateCard, setPan, setZoom, deleteAllCards } = useSpatialStore()
   const [primitiveTool, setPrimitiveTool] = useState<PrimitiveTool>('hand')
   const [openMiniApp, setOpenMiniApp] = useState<MiniApp | null>(null)
   const [instructionsExpanded, setInstructionsExpanded] = useState(false)
@@ -209,216 +209,203 @@ export function SpatialDemo() {
   }
 
 
-  // Initialize landing page narrative on first load
+  // Initialize bench demo on first load
   useEffect(() => {
     if (!space) return
 
-    // TEMPORARILY DISABLED FOR TESTING PERFORMANCE
-    return
-
-    // Check if we need to create the landing page
-    // Look for the "Halcyon" title card - if it doesn't exist, create all cards
-    const hasLandingPage = space.cards.some(card => card.name === 'Halcyon')
-
-    if (hasLandingPage) return
+    // Check if demo already exists
+    const hasBenchDemo = space.cards.some(card => card.name === 'The Bench')
+    if (hasBenchDemo) return
 
     const centerX = 500
     const centerY = 300
 
-    // ========== LANDING PAGE NARRATIVE ==========
+    // ========== BENCH DEMO: TWO VIEWS, ONE MIND ==========
 
-    // Hero: Welcome (zen whites & creams)
+    // Hero: The Bench concept
     setTimeout(() => {
-      const cardId = createCard(centerX, centerY - 400, 'Halcyon')
+      const cardId = createCard(centerX, centerY - 350, 'The Bench')
       updateCard(cardId, {
         cardType: 'note',
-        color: '#FAFAF9',
-        width: 300,
-        height: 120,
+        color: '#f4e2c4', // OSB chipboard color
+        width: 260,
+        height: 80,
       })
     }, 50)
 
     setTimeout(() => {
-      const cardId = createCard(centerX, centerY - 260, 'A spatial thinking environment\nfor your mind')
+      const cardId = createCard(centerX, centerY - 240, 'A workspace with two views:\nwhere things are + how they connect')
       updateCard(cardId, {
         cardType: 'note',
         color: '#F5F5F0',
-        width: 280,
+        width: 300,
       })
     }, 100)
 
-    // Visual: Central orbit (represents system thinking)
+    // Left side: Spatial Canvas explanation
     setTimeout(() => {
-      const cardId = createCard(centerX - 200, centerY - 100, '')
+      const cardId = createCard(centerX - 450, centerY - 120, 'Spatial Canvas')
       updateCard(cardId, {
-        cardType: 'orbit',
-        width: 500,
-        height: 350,
-        color: '#0a0a0a',
+        cardType: 'note',
+        color: '#E8EEF2',
+        width: 200,
+        height: 60,
       })
     }, 150)
 
-    // Orbit description card
     setTimeout(() => {
-      const cardId = createCard(centerX + 320, centerY + 150, 'Live Kepler orbit simulation\n(Interactive visualization)')
+      const cardId = createCard(centerX - 450, centerY, 'Position = meaning\nFreeform thinking\nInk + stickers + cards')
       updateCard(cardId, {
         cardType: 'note',
-        color: '#E8EEF2',
-        width: 220,
-      })
-    }, 180)
-
-    // Section 1: Why Spatial? (zen blues & warm greys)
-    setTimeout(() => {
-      const cardId = createCard(centerX - 600, centerY - 150, 'Your brain thinks in space')
-      updateCard(cardId, {
-        cardType: 'note',
-        color: '#E8EEF2',
-        width: 240,
+        color: '#F0EBE3',
+        width: 200,
       })
     }, 200)
 
     setTimeout(() => {
-      const cardId = createCard(centerX - 600, centerY - 20, 'Not in folders.\nNot in lists.\n\nIn spatial relationships.')
-      updateCard(cardId, {
-        cardType: 'note',
-        color: '#F0EBE3',
-        width: 220,
-      })
+      const cardId = createCard(centerX - 520, centerY + 100, '🎨')
+      updateCard(cardId, { cardType: 'sticker', icon: '🎨', size: 'medium' })
     }, 250)
 
-    // Graphics: Stickers for visual flow
     setTimeout(() => {
-      const cardId = createCard(centerX - 450, centerY - 60, '🧠')
-      updateCard(cardId, { cardType: 'sticker', icon: '🧠', size: 'large' })
-    }, 300)
+      const cardId = createCard(centerX - 380, centerY + 100, '✏️')
+      updateCard(cardId, { cardType: 'sticker', icon: '✏️', size: 'medium' })
+    }, 280)
 
+    // Right side: Logic View explanation
     setTimeout(() => {
-      const cardId = createCard(centerX - 80, centerY - 250, '🌅')
-      updateCard(cardId, { cardType: 'sticker', icon: '🌅', size: 'large' })
-    }, 320)
-
-    // Section 2: Entity Types (soft sage)
-    setTimeout(() => {
-      const cardId = createCard(centerX + 400, centerY - 200, 'Everything is a card')
+      const cardId = createCard(centerX + 450, centerY - 120, 'Logic View')
       updateCard(cardId, {
         cardType: 'note',
         color: '#E8F0E8',
-        width: 220,
+        width: 200,
+        height: 60,
+      })
+    }, 300)
+
+    setTimeout(() => {
+      const cardId = createCard(centerX + 450, centerY, 'Connections = structure\nDependencies + flows\nGraphs + pipelines')
+      updateCard(cardId, {
+        cardType: 'note',
+        color: '#F0EBE3',
+        width: 200,
       })
     }, 350)
 
-    // Show task example
     setTimeout(() => {
-      const cardId = createCard(centerX + 400, centerY - 60, 'Build something amazing')
+      const cardId = createCard(centerX + 380, centerY + 100, '🔗')
+      updateCard(cardId, { cardType: 'sticker', icon: '🔗', size: 'medium' })
+    }, 400)
+
+    setTimeout(() => {
+      const cardId = createCard(centerX + 520, centerY + 100, '📊')
+      updateCard(cardId, { cardType: 'sticker', icon: '📊', size: 'medium' })
+    }, 430)
+
+    // Center: The connection
+    setTimeout(() => {
+      const cardId = createCard(centerX, centerY - 40, '↔️')
+      updateCard(cardId, { cardType: 'sticker', icon: '↔️', size: 'large' })
+    }, 460)
+
+    setTimeout(() => {
+      const cardId = createCard(centerX, centerY + 40, 'Same data\nTwo lenses')
+      updateCard(cardId, {
+        cardType: 'note',
+        color: '#ffffff',
+        width: 140,
+      })
+    }, 500)
+
+    // Bottom: The 6 graphs preview
+    setTimeout(() => {
+      const cardId = createCard(centerX - 300, centerY + 200, 'Task Graph\n"What blocks what"')
+      updateCard(cardId, {
+        cardType: 'note',
+        color: '#FFE4E4',
+        width: 160,
+      })
+    }, 550)
+
+    setTimeout(() => {
+      const cardId = createCard(centerX - 100, centerY + 200, 'People Graph\n"Who works with who"')
+      updateCard(cardId, {
+        cardType: 'note',
+        color: '#E4E4FF',
+        width: 160,
+      })
+    }, 600)
+
+    setTimeout(() => {
+      const cardId = createCard(centerX + 100, centerY + 200, 'Pipeline View\n"Phase → phase"')
+      updateCard(cardId, {
+        cardType: 'note',
+        color: '#E4FFE4',
+        width: 160,
+      })
+    }, 650)
+
+    setTimeout(() => {
+      const cardId = createCard(centerX + 300, centerY + 200, 'Zone Map\n"Life architecture"')
+      updateCard(cardId, {
+        cardType: 'note',
+        color: '#FFF4E4',
+        width: 160,
+      })
+    }, 700)
+
+    // Example task cards (showing structure)
+    setTimeout(() => {
+      const cardId = createCard(centerX - 200, centerY + 350, 'Design system')
+      updateCard(cardId, {
+        cardType: 'task',
+        completed: true,
+        energy: 'high_focus',
+        signal: 'normal',
+      })
+    }, 750)
+
+    setTimeout(() => {
+      const cardId = createCard(centerX, centerY + 350, 'Build components')
       updateCard(cardId, {
         cardType: 'task',
         completed: false,
         energy: 'high_focus',
         signal: 'loud',
       })
-    }, 400)
-
-    // Show person example (pale lavender)
-    setTimeout(() => {
-      const cardId = createCard(centerX + 580, centerY - 60, 'You')
-      updateCard(cardId, {
-        cardType: 'person',
-        role: 'Creator',
-        color: '#E8E8F0',
-      })
-    }, 450)
-
-    // Show note example (warm sand)
-    setTimeout(() => {
-      const cardId = createCard(centerX + 400, centerY + 60, 'Ideas live here.\nThoughts connect.\nPosition = meaning.')
-      updateCard(cardId, {
-        cardType: 'note',
-        color: '#F0EBE3',
-        width: 200,
-      })
-    }, 500)
-
-    // Section 3: Features (soft mint & rose)
-    setTimeout(() => {
-      const cardId = createCard(centerX - 600, centerY + 200, 'Drag to move\nDouble-click to edit\nZoom & pan freely')
-      updateCard(cardId, {
-        cardType: 'note',
-        color: '#E6F2ED',
-        width: 220,
-      })
-    }, 550)
-
-    setTimeout(() => {
-      const cardId = createCard(centerX - 350, centerY + 200, 'Auto-saves\nto IndexedDB')
-      updateCard(cardId, {
-        cardType: 'note',
-        color: '#F0E8E8',
-        width: 180,
-      })
-    }, 600)
-
-    setTimeout(() => {
-      const cardId = createCard(centerX - 130, centerY + 240, '60 FPS\nperformance')
-      updateCard(cardId, {
-        cardType: 'note',
-        color: '#F5F5F0',
-        width: 160,
-      })
-    }, 650)
-
-    // Graphics: Feature icons
-    setTimeout(() => {
-      const cardId = createCard(centerX - 380, centerY + 130, '⚡')
-      updateCard(cardId, { cardType: 'sticker', icon: '⚡', size: 'medium' })
-    }, 680)
-
-    setTimeout(() => {
-      const cardId = createCard(centerX - 160, centerY + 160, '✨')
-      updateCard(cardId, { cardType: 'sticker', icon: '✨', size: 'medium' })
-    }, 700)
-
-    // Section 4: Call to Action (pale stone)
-    setTimeout(() => {
-      const cardId = createCard(centerX + 400, centerY + 180, 'Click anywhere\nto create your first card')
-      updateCard(cardId, {
-        cardType: 'note',
-        color: '#F0F0F0',
-        width: 240,
-        height: 100,
-      })
-    }, 750)
-
-    setTimeout(() => {
-      const cardId = createCard(centerX + 680, centerY + 200, '👉')
-      updateCard(cardId, { cardType: 'sticker', icon: '👉', size: 'large' })
     }, 800)
 
-    // Footer: Credits (soft grey)
     setTimeout(() => {
-      const cardId = createCard(centerX, centerY + 400, 'Built with Kinopio patterns\n+ Halcyon principles')
+      const cardId = createCard(centerX + 200, centerY + 350, 'Ship v1')
       updateCard(cardId, {
-        cardType: 'note',
-        color: '#EBEBEB',
-        width: 260,
+        cardType: 'task',
+        completed: false,
+        energy: 'medium',
+        signal: 'normal',
       })
     }, 850)
 
-    // FlipClock gadget (top right)
+    // Arrow stickers showing flow
     setTimeout(() => {
-      const cardId = createCard(centerX + 600, centerY - 400, 'FlipClock')
-      updateCard(cardId, {
-        cardType: 'flipclock',
-      })
+      const cardId = createCard(centerX - 100, centerY + 340, '→')
+      updateCard(cardId, { cardType: 'sticker', icon: '→', size: 'small' })
+    }, 880)
+
+    setTimeout(() => {
+      const cardId = createCard(centerX + 100, centerY + 340, '→')
+      updateCard(cardId, { cardType: 'sticker', icon: '→', size: 'small' })
     }, 900)
 
-    // Pomodoro Timer gadget (top left)
+    // Footer
     setTimeout(() => {
-      const cardId = createCard(centerX - 600, centerY - 400, 'PomodoroTimer')
+      const cardId = createCard(centerX, centerY + 460, 'Click anywhere to add cards\nDrag to move • Scroll to zoom')
       updateCard(cardId, {
-        cardType: 'pomodoro',
+        cardType: 'note',
+        color: '#EBEBEB',
+        width: 280,
       })
     }, 950)
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [space])
 

@@ -42,6 +42,10 @@
   --energy-medium: '○';
   --energy-low-energy: '☁';
   --energy-social: '👥';
+
+  /* Bench background (monochrome default) */
+  --bench-bg-color: #f5f5f5;
+  --bench-texture-visible: 1;
 }
 
 /* ========================================
@@ -84,6 +88,10 @@
 
   /* Shadows with warm tint */
   --color-shadow: rgba(46, 46, 46, 0.08);
+
+  /* Bench background (warm chipboard) */
+  --bench-bg-color: #f4e2c4;
+  --bench-texture-visible: 1;
 }
 
 /* ========================================

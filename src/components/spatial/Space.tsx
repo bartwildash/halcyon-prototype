@@ -9,13 +9,16 @@ import { SpatialCard } from './SpatialCard'
 import { ConnectionsLayer } from './ConnectionsLayer'
 import { SelectionCanvas } from './SelectionCanvas'
 import { BoxFrame } from './BoxFrame'
+import { BenchBackground, type BenchMode } from './BenchBackground'
 import { screenToCanvas, isCardInViewport } from '../../utils/geometry'
 
 interface SpaceProps {
   spaceId: string
+  /** Background texture mode: 'osb' (chipboard), 'grid' (dots), or 'plain' */
+  backgroundMode?: BenchMode
 }
 
-export function Space({ spaceId }: SpaceProps) {
+export function Space({ spaceId, backgroundMode = 'osb' }: SpaceProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const { space, loadSpace, createCard, clearSelection } = useSpatialStore()
@@ -100,19 +103,16 @@ export function Space({ spaceId }: SpaceProps) {
   return (
     <div
       ref={containerRef}
-      className="space-container"
+      className="space-container halcyon-bench"
       style={{
         position: 'fixed',
         inset: 0,
         overflow: 'hidden',
-        background: `
-          radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px)
-        `,
-        backgroundColor: '#F5F5F0', // Warm beige zen background
-        backgroundSize: '24px 24px',
         touchAction: 'none',
       }}
     >
+      {/* Bench background texture - warm OSB chipboard feel */}
+      <BenchBackground mode={backgroundMode} zoom={zoom} />
       {/* The "infinite canvas" - transformed container */}
       <div
         ref={canvasRef}

@@ -354,12 +354,12 @@ export function PomodoroTimer({ onClose }: PomodoroTimerProps) {
               filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))',
             }}
           >
-            {/* Tick marks - simpler style */}
+            {/* Tick marks - inside the number circle */}
             {Array.from({ length: 60 }).map((_, i) => {
               const isHour = i % 5 === 0
               const angle = (i * 6) * (Math.PI / 180)
-              const innerRadius = isHour ? 122 : 132
-              const outerRadius = 142
+              const innerRadius = isHour ? 100 : 105
+              const outerRadius = 115
               const x1 = 150 + Math.sin(angle) * innerRadius
               const y1 = 150 - Math.cos(angle) * innerRadius
               const x2 = 150 + Math.sin(angle) * outerRadius
@@ -380,11 +380,12 @@ export function PomodoroTimer({ onClose }: PomodoroTimerProps) {
               )
             })}
 
-            {/* Number labels - starting from 12 o'clock */}
+            {/* Number labels - outside tick marks, mirrored horizontally for counter-clockwise progression */}
             {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((num, i) => {
+              // Mirror angle horizontally: negate the sin component
               const angle = (i * 30) * (Math.PI / 180)
-              const radius = 95
-              const x = 150 + Math.sin(angle) * radius
+              const radius = 128
+              const x = 150 - Math.sin(angle) * radius  // Changed + to - to mirror
               const y = 150 - Math.cos(angle) * radius
 
               return (
@@ -395,7 +396,7 @@ export function PomodoroTimer({ onClose }: PomodoroTimerProps) {
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill={themeColors.numberColor}
-                  fontSize="26"
+                  fontSize="24"
                   fontWeight="700"
                   fontFamily="system-ui, -apple-system, sans-serif"
                 >
@@ -407,9 +408,9 @@ export function PomodoroTimer({ onClose }: PomodoroTimerProps) {
             {/* 25-minute start line - clear visual marker at 12 o'clock */}
             <line
               x1="150"
-              y1="20"
+              y1="25"
               x2="150"
-              y2="50"
+              y2="48"
               stroke={themeColors.startLineColor}
               strokeWidth="4"
               strokeLinecap="round"
@@ -420,15 +421,15 @@ export function PomodoroTimer({ onClose }: PomodoroTimerProps) {
 
             {/* Red countdown disc - shows ONLY remaining time */}
             <g>
-              {/* Red countdown wedge - starts at 12 o'clock (25min mark), shrinks clockwise */}
+              {/* Red countdown wedge - starts at 12 o'clock (25min mark), shrinks counter-clockwise */}
               {angle > 0 && (
                 <path
                   d={`
                     M 150 150
-                    L 150 20
-                    A 130 130 0 ${angle > 180 ? 1 : 0} 1
-                    ${150 + Math.sin((angle) * Math.PI / 180) * 130}
-                    ${150 - Math.cos((angle) * Math.PI / 180) * 130}
+                    L 150 50
+                    A 100 100 0 ${angle > 180 ? 1 : 0} 0
+                    ${150 - Math.sin((angle) * Math.PI / 180) * 100}
+                    ${150 - Math.cos((angle) * Math.PI / 180) * 100}
                     Z
                   `}
                   fill={themeColors.discColor}
@@ -444,8 +445,8 @@ export function PomodoroTimer({ onClose }: PomodoroTimerProps) {
             <line
               x1="150"
               y1="150"
-              x2={150 + Math.sin((angle) * Math.PI / 180) * 110}
-              y2={150 - Math.cos((angle) * Math.PI / 180) * 110}
+              x2={150 - Math.sin((angle) * Math.PI / 180) * 100}
+              y2={150 - Math.cos((angle) * Math.PI / 180) * 100}
               stroke="#2a2a2a"
               strokeWidth="4"
               strokeLinecap="round"

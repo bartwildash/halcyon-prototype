@@ -66,6 +66,16 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+/* Halcyon Bench - Spatial canvas background */
+.halcyon-bench {
+  background-color: var(--bench-bg-color, #f5f5f5);
+}
+
+/* Calm theme bench color */
+[data-theme="calm"] .halcyon-bench {
+  background-color: var(--bench-bg-color, #f4e2c4);
+}
+
 /* Spatial Canvas Animations */
 @keyframes focus-ring-pulse {
   0%, 100% {
