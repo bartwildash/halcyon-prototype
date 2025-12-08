@@ -12,9 +12,13 @@ interface SelectionCanvasProps {
   containerRef: React.RefObject<HTMLDivElement>
 }
 
+// Drag threshold - must move this many pixels before starting selection
+const DRAG_THRESHOLD = 15 // Increased from implicit 0 to 15px
+
 export function SelectionCanvas({ zoom, scrollX, scrollY, containerRef }: SelectionCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isDrawing = useRef(false)
+  const hasMoved = useRef(false) // Track if pointer moved beyond threshold
   const startPoint = useRef({ x: 0, y: 0 })
   const currentPoint = useRef({ x: 0, y: 0 })
   const selectionMode = useRef<'rectangle' | 'lasso'>('rectangle')
@@ -114,6 +118,7 @@ export function SelectionCanvas({ zoom, scrollX, scrollY, containerRef }: Select
       if (!rect) return
 
       isDrawing.current = true
+      hasMoved.current = false // Reset movement flag
       startPoint.current = { x: e.clientX, y: e.clientY }
       currentPoint.current = { x: e.clientX, y: e.clientY }
 
@@ -124,7 +129,7 @@ export function SelectionCanvas({ zoom, scrollX, scrollY, containerRef }: Select
         lassoPoints.current = [{ x: e.clientX, y: e.clientY }]
       }
 
-      drawSelection()
+      // Don't draw until threshold is exceeded
     },
     [drawSelection]
   )
@@ -135,6 +140,20 @@ export function SelectionCanvas({ zoom, scrollX, scrollY, containerRef }: Select
       if (!isDrawing.current) return
 
       currentPoint.current = { x: e.clientX, y: e.clientY }
+
+      // Check if movement exceeds threshold
+      if (!hasMoved.current) {
+        const dx = e.clientX - startPoint.current.x
+        const dy = e.clientY - startPoint.current.y
+        const distance = Math.sqrt(dx * dx + dy * dy)
+
+        if (distance > DRAG_THRESHOLD) {
+          hasMoved.current = true
+        } else {
+          // Haven't moved enough yet, don't draw
+          return
+        }
+      }
 
       if (selectionMode.current === 'lasso') {
         lassoPoints.current.push({ x: e.clientX, y: e.clientY })
@@ -148,6 +167,13 @@ export function SelectionCanvas({ zoom, scrollX, scrollY, containerRef }: Select
   // Handle pointer up - complete selection
   const handlePointerUp = useCallback(() => {
     if (!isDrawing.current) return
+
+    // If pointer was never moved beyond threshold, don't select anything
+    if (!hasMoved.current) {
+      isDrawing.current = false
+      lassoPoints.current = []
+      return
+    }
 
     const rect = containerRef.current?.getBoundingClientRect()
     if (!rect || !space) return
