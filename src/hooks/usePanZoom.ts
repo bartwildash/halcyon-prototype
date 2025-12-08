@@ -1,9 +1,10 @@
 // Pan and Zoom Hook
-// Handles canvas navigation: pan via drag, zoom via wheel/pinch
+// Handles canvas navigation: pan via drag, zoom via wheel/pinch, double-tap zoom
 
 import { useRef, useCallback, useEffect } from 'react'
 import { useSpatialStore } from '../stores/spatialStore'
 import { clampZoom, zoomTowardPoint } from '../utils/geometry'
+import { DoubleTapDetector, isMultiTouch } from '../utils/touch'
 
 export function usePanZoom(containerRef: React.RefObject<HTMLElement>) {
   const { space, setZoom, setPan, setIsPanning } = useSpatialStore()
@@ -11,6 +12,7 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement>) {
   const lastPanPos = useRef({ x: 0, y: 0 })
   const panStart = useRef({ scrollX: 0, scrollY: 0, clientX: 0, clientY: 0 })
   const pinchDistance = useRef<number | null>(null)
+  const doubleTapDetector = useRef(new DoubleTapDetector())
 
   // Pan via drag
   const handlePointerDown = useCallback(
@@ -59,10 +61,42 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement>) {
     [setPan]
   )
 
-  const handlePointerUp = useCallback(() => {
-    isPanningRef.current = false
-    setIsPanning(false)
-  }, [setIsPanning])
+  const handlePointerUp = useCallback(
+    (e: PointerEvent) => {
+      isPanningRef.current = false
+      setIsPanning(false)
+
+      // Handle double-tap zoom on mobile
+      if (doubleTapDetector.current.isDoubleTap(e as any)) {
+        if (!space) return
+
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (!rect) return
+
+        // Zoom in/out on double-tap
+        const oldZoom = space.zoom
+        const isZoomedIn = oldZoom > 1.2
+        const newZoom = isZoomedIn ? 1 : clampZoom(oldZoom * 1.8) // Zoom in to 1.8x or reset to 1
+
+        // Zoom toward tap position
+        const cursorX = e.clientX - rect.left
+        const cursorY = e.clientY - rect.top
+
+        const newScroll = zoomTowardPoint(
+          cursorX,
+          cursorY,
+          oldZoom,
+          newZoom,
+          space.scrollX,
+          space.scrollY
+        )
+
+        setZoom(newZoom)
+        setPan(newScroll.x, newScroll.y)
+      }
+    },
+    [setIsPanning, space, containerRef, setZoom, setPan]
+  )
 
   // Zoom via wheel
   const handleWheel = useCallback(
@@ -102,7 +136,8 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement>) {
 
   // Pinch zoom on mobile
   const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (e.touches.length === 2) {
+    // Only handle 2-finger pinch (multi-touch)
+    if (e.touches.length === 2 && isMultiTouch(e as any)) {
       const touch1 = e.touches[0]
       const touch2 = e.touches[1]
       const dx = touch2.clientX - touch1.clientX

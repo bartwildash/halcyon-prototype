@@ -4,6 +4,7 @@
 import { useRef, useCallback, useEffect } from 'react'
 import { useSpatialStore } from '../../stores/spatialStore'
 import { screenToCanvas } from '../../utils/geometry'
+import { isMultiTouch, TouchInteractionManager, isTouchOrLeftClick } from '../../utils/touch'
 
 interface SelectionCanvasProps {
   zoom: number
@@ -23,6 +24,9 @@ export function SelectionCanvas({ zoom, scrollX, scrollY, containerRef }: Select
   const currentPoint = useRef({ x: 0, y: 0 })
   const selectionMode = useRef<'rectangle' | 'lasso'>('rectangle')
   const lassoPoints = useRef<{ x: number; y: number }[]>([])
+
+  // Touch interaction management (Kinopio pattern)
+  const touchManager = useRef(new TouchInteractionManager())
 
   const { space, selectCardsInArea, clearSelection } = useSpatialStore()
 
@@ -110,12 +114,24 @@ export function SelectionCanvas({ zoom, scrollX, scrollY, containerRef }: Select
   // Handle pointer down - start selection
   const handlePointerDown = useCallback(
     (e: PointerEvent) => {
+      // Prevent multi-touch conflicts (pinch zoom, etc)
+      if (isMultiTouch(e as any)) {
+        touchManager.current.cancel()
+        return
+      }
+
+      // Only valid touch/left-click
+      if (!isTouchOrLeftClick(e)) return
+
       // Only start selection if clicking empty space (not on a card)
       const target = e.target as HTMLElement
       if (target.closest('.spatial-card')) return
 
       const rect = containerRef.current?.getBoundingClientRect()
       if (!rect) return
+
+      // Start touch interaction tracking (Kinopio pattern)
+      touchManager.current.start(e as any)
 
       isDrawing.current = true
       hasMoved.current = false // Reset movement flag
@@ -131,7 +147,7 @@ export function SelectionCanvas({ zoom, scrollX, scrollY, containerRef }: Select
 
       // Don't draw until threshold is exceeded
     },
-    [drawSelection]
+    [containerRef]
   )
 
   // Handle pointer move - update selection
@@ -140,6 +156,12 @@ export function SelectionCanvas({ zoom, scrollX, scrollY, containerRef }: Select
       if (!isDrawing.current) return
 
       currentPoint.current = { x: e.clientX, y: e.clientY }
+
+      // Kinopio pattern: Touch must wait 150ms before allowing interaction
+      // This prevents accidental selection when trying to pan
+      if (!touchManager.current.canInteract()) {
+        return // Touch hasn't been held long enough
+      }
 
       // Check if movement exceeds threshold
       if (!hasMoved.current) {
@@ -167,6 +189,9 @@ export function SelectionCanvas({ zoom, scrollX, scrollY, containerRef }: Select
   // Handle pointer up - complete selection
   const handlePointerUp = useCallback(() => {
     if (!isDrawing.current) return
+
+    // Reset touch manager
+    touchManager.current.reset()
 
     // If pointer was never moved beyond threshold, don't select anything
     if (!hasMoved.current) {
