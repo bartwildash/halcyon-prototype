@@ -1,0 +1,203 @@
+/* ZoneRegion - Spatial macro-areas */
+/* Large faint regions with optional landmark icons */
+
+.zone-region {
+  position: absolute;
+  border-radius: 32px;
+  transition: all 600ms ease-out;
+  pointer-events: none; /* Zones are background, entities are foreground */
+}
+
+.zone-region.active {
+  opacity: 1;
+}
+
+.zone-region.inactive {
+  opacity: 0.3;
+}
+
+/* Faint background */
+.zone-background {
+  position: absolute;
+  inset: 0;
+  border-radius: 32px;
+  background: rgba(0, 0, 0, 0.01);
+  backdrop-filter: blur(1px);
+}
+
+/* Light border, no strong edges */
+.zone-border {
+  position: absolute;
+  inset: 0;
+  border-radius: 32px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Pattern overlays - monochrome-friendly */
+.zone-region.pattern-dots .zone-background {
+  background-image: radial-gradient(
+    circle,
+    rgba(0, 0, 0, 0.03) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+.zone-region.pattern-grid .zone-background {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.zone-region.pattern-none .zone-background {
+  background-image: none;
+}
+
+/* Landmark icon for spatial memory */
+.zone-landmark {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  pointer-events: auto;
+}
+
+.landmark-icon {
+  font-size: 3rem;
+  line-height: 1;
+  filter: grayscale(0.3); /* Slight desaturation for calm */
+}
+
+.landmark-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #333333;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Zone title (when no landmark) */
+.zone-title {
+  position: absolute;
+  top: 1.5rem;
+  left: 1.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  pointer-events: auto;
+}
+
+.zone-title h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #666666;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Zone content area */
+.zone-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 4rem 2rem 2rem;
+  pointer-events: none; /* Let entities inside handle pointer events */
+}
+
+.zone-content > * {
+  pointer-events: auto; /* Re-enable for children */
+}
+
+/* Fog overlay when inactive (zoom-out fades other zones) */
+.zone-fog {
+  position: absolute;
+  inset: 0;
+  border-radius: 32px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0.5) 100%
+  );
+  backdrop-filter: blur(4px);
+  transition: opacity 600ms ease-out;
+  pointer-events: none;
+}
+
+.zone-region.active .zone-fog {
+  opacity: 0;
+}
+
+/* Zoom-responsive behavior */
+@media (zoom-level: out) {
+  /* When zoomed out, zones become more prominent */
+  .zone-border {
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+
+  .zone-landmark {
+    transform: scale(1.2);
+  }
+}
+
+/* Hover states (for mouse users) */
+.zone-landmark:hover {
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(0, 0, 0, 0.15);
+  transform: scale(1.05);
+  transition: all 200ms ease;
+}
+
+/* Focus states */
+.zone-landmark:focus-visible {
+  outline: 3px solid #000000;
+  outline-offset: 2px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .zone-landmark {
+    top: 1rem;
+    left: 1rem;
+    padding: 0.75rem;
+  }
+
+  .landmark-icon {
+    font-size: 2rem;
+  }
+
+  .landmark-label {
+    font-size: 0.75rem;
+  }
+
+  .zone-title h3 {
+    font-size: 1rem;
+  }
+}
+
+/* Animation for zone appearance */
+@keyframes zone-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.zone-region {
+  animation: zone-appear 600ms ease-out;
+}

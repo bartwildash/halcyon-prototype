@@ -1,0 +1,261 @@
+/**
+ * LOG Mode Styles
+ *
+ * Strata-inspired design matching the Canyon terrain
+ */
+
+.log-mode {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Header */
+.log-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.log-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.log-subtitle {
+  font-size: 1rem;
+  opacity: 0.6;
+  margin: 0;
+}
+
+.log-filters {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.log-filters button {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid var(--color-border, #333);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 120ms ease-out;
+}
+
+.log-filters button:hover {
+  background: var(--color-border, #333);
+}
+
+.log-filters button.active {
+  background: var(--color-text, #000);
+  color: var(--color-bg, #fff);
+  border-color: var(--color-text, #000);
+}
+
+/* Composer */
+.log-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  border: 2px solid var(--color-border, #333);
+  border-radius: 8px;
+  background: var(--color-bg, #fff);
+}
+
+.log-composer textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border, #333);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 1rem;
+  resize: vertical;
+  background: var(--color-bg, #fff);
+  color: var(--color-text, #000);
+}
+
+.log-composer textarea:focus {
+  outline: none;
+  border-color: var(--color-text, #000);
+}
+
+.log-composer-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.log-composer-tags .tag,
+.log-composer-tags .tag-selected {
+  padding: 0.375rem 0.75rem;
+  background: transparent;
+  border: 1px solid var(--color-border, #333);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 120ms ease-out;
+}
+
+.log-composer-tags .tag:hover {
+  background: var(--color-border, #333);
+}
+
+.log-composer-tags .tag-selected {
+  background: var(--color-text, #000);
+  color: var(--color-bg, #fff);
+  border-color: var(--color-text, #000);
+}
+
+.log-composer-submit {
+  padding: 0.75rem 1.5rem;
+  background: var(--color-text, #000);
+  color: var(--color-bg, #fff);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 120ms ease-out;
+  align-self: flex-start;
+}
+
+.log-composer-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.log-composer-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Timeline */
+.log-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: relative;
+}
+
+/* Strata line on left side */
+.log-timeline::before {
+  content: '';
+  position: absolute;
+  left: -1rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(
+    to bottom,
+    var(--color-border, #333) 0%,
+    var(--color-border, #333) 70px,
+    transparent 70px,
+    transparent 72px,
+    var(--color-border, #333) 72px
+  );
+  background-size: 100% 72px;
+  opacity: 0.3;
+}
+
+.log-empty {
+  text-align: center;
+  padding: 3rem;
+  opacity: 0.6;
+}
+
+/* Log Entry */
+.log-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid var(--color-border, #333);
+  border-radius: 6px;
+  background: var(--color-bg, #fff);
+  transition: all 120ms ease-out;
+}
+
+.log-entry:hover {
+  border-color: var(--color-text, #000);
+  transform: translateX(2px);
+}
+
+.log-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.log-entry-time {
+  font-size: 0.875rem;
+  opacity: 0.6;
+  font-weight: 600;
+}
+
+.log-entry-tags {
+  display: flex;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+
+.log-entry-tag {
+  padding: 0.25rem 0.625rem;
+  background: var(--color-border, #333);
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.log-entry-content {
+  font-size: 1rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.log-entry-event {
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-border, #333);
+  border-radius: 4px;
+  opacity: 0.7;
+}
+
+/* Dark mode adjustments */
+:root[data-theme="dark"] .log-composer,
+:root[data-theme="dark"] .log-entry {
+  background: var(--color-bg, #1a1a1a);
+}
+
+:root[data-theme="dark"] .log-composer textarea {
+  background: var(--color-bg, #1a1a1a);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .log-mode {
+    padding: 1rem;
+  }
+
+  .log-header h1 {
+    font-size: 2rem;
+  }
+
+  .log-filters {
+    flex-wrap: wrap;
+  }
+
+  .log-composer {
+    padding: 1rem;
+  }
+}

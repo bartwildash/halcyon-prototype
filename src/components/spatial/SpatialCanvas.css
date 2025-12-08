@@ -1,0 +1,124 @@
+/* SpatialCanvas - Infinite canvas layer for entities */
+
+.spatial-canvas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none; /* Let entities handle their own events */
+}
+
+.spatial-entity {
+  pointer-events: auto; /* Re-enable for entity cards */
+  will-change: transform; /* Hint for smooth transforms */
+}
+
+/* Smooth transitions when camera moves */
+.spatial-entity {
+  transition: left 150ms ease-out, top 150ms ease-out;
+}
+
+/* Prevent text selection during pan/zoom */
+.spatial-canvas * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Cute animations - subtle floating for stickers */
+@keyframes gentle-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes gentle-sway {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(1deg);
+  }
+  75% {
+    transform: rotate(-1deg);
+  }
+}
+
+@keyframes spring-bounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+/* Apply subtle animations to stickers */
+.spatial-entity:has(.sticker-card) {
+  animation:
+    gentle-float 4s ease-in-out infinite,
+    gentle-sway 6s ease-in-out infinite;
+  animation-delay: var(--sticker-delay, 0s);
+}
+
+.spatial-entity:has(.sticker-card):hover {
+  animation: spring-bounce 0.5s ease-out;
+}
+
+/* Animated relationship lines */
+.relation-line {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.relation-path {
+  stroke: #666666;
+  stroke-width: 2;
+  fill: none;
+  stroke-dasharray: 8 4;
+  stroke-linecap: round;
+  opacity: 0.4;
+  transition: all 200ms ease;
+
+  /* Animated dashes */
+  animation: dash-flow 20s linear infinite;
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -240;
+  }
+}
+
+.relation-path:hover,
+.relation-line:hover .relation-path {
+  opacity: 0.8;
+  stroke-width: 3;
+  stroke: #000000;
+}
+
+.relation-hit-area {
+  stroke: transparent;
+  stroke-width: 20;
+  fill: none;
+}
+
+.relation-label {
+  position: absolute;
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #666666;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #666666;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.relation-line:hover .relation-label {
+  opacity: 1;
+}

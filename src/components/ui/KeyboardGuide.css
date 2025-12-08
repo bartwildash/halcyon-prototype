@@ -1,0 +1,212 @@
+/**
+ * Keyboard Guide Styles
+ *
+ * Monochrome-first design with high contrast for DC-1 RLCD
+ */
+
+.keyboard-guide-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 150ms ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.keyboard-guide {
+  background: var(--color-bg, #fff);
+  border: 3px solid var(--color-text, #000);
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 700px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.2);
+  animation: slideUp 200ms ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.keyboard-guide h2 {
+  margin: 0 0 1.5rem 0;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.keyboard-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.keyboard-guide section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.keyboard-guide h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.6;
+  border-bottom: 2px solid var(--color-border, #333);
+  padding-bottom: 0.375rem;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.375rem 0;
+}
+
+.shortcut-keys {
+  display: flex;
+  gap: 0.375rem;
+  min-width: 100px;
+}
+
+.shortcut-desc {
+  flex: 1;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.5rem;
+  min-width: 32px;
+  height: 28px;
+  background: var(--color-bg, #fff);
+  border: 2px solid var(--color-text, #000);
+  border-radius: 4px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: 0 2px 0 var(--color-text, #000);
+  text-align: center;
+}
+
+.keyboard-guide-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid var(--color-border, #333);
+}
+
+.keyboard-guide-close {
+  padding: 0.75rem 1.5rem;
+  background: var(--color-text, #000);
+  color: var(--color-bg, #fff);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 120ms ease-out;
+  align-self: flex-start;
+}
+
+.keyboard-guide-close:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.keyboard-guide-close:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.keyboard-guide-hint {
+  font-size: 0.875rem;
+  opacity: 0.7;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Dark theme adjustments */
+:root[data-theme="dark"] .keyboard-guide {
+  background: var(--color-bg, #1a1a1a);
+  border-color: var(--color-text, #fff);
+}
+
+:root[data-theme="dark"] kbd {
+  background: var(--color-bg, #1a1a1a);
+  border-color: var(--color-text, #fff);
+  box-shadow: 0 2px 0 var(--color-text, #fff);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .keyboard-guide {
+    margin: 1rem;
+    padding: 1.5rem;
+    max-width: calc(100vw - 2rem);
+  }
+
+  .keyboard-sections {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .keyboard-guide h2 {
+    font-size: 1.5rem;
+  }
+
+  .shortcut-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .shortcut-keys {
+    min-width: auto;
+  }
+}
+
+/* Scrollbar styling for overlay */
+.keyboard-guide::-webkit-scrollbar {
+  width: 8px;
+}
+
+.keyboard-guide::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.keyboard-guide::-webkit-scrollbar-thumb {
+  background: var(--color-border, #333);
+  border-radius: 4px;
+}
+
+.keyboard-guide::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text, #000);
+}

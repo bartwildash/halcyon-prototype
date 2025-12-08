@@ -1,0 +1,284 @@
+/**
+ * ToolbarDemo Styles
+ */
+
+.toolbar-demo {
+  min-height: 100vh;
+  padding: 40px 20px;
+  background: #f5f5f5;
+}
+
+.demo-header {
+  max-width: 1200px;
+  margin: 0 auto 40px;
+}
+
+.demo-header h2 {
+  margin: 0 0 20px;
+  font-size: 32px;
+  font-weight: 700;
+  color: #111;
+}
+
+/* Mode switcher */
+.mode-switcher {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mode-button {
+  padding: 10px 20px;
+  background: #fff;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: capitalize;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-button:hover {
+  border-color: #111;
+}
+
+.mode-button.active {
+  background: #111;
+  border-color: #111;
+  color: #fff;
+}
+
+/* Content card */
+.demo-content-card {
+  position: relative;
+  max-width: 800px;
+  margin: 0 auto 40px;
+  padding: 60px 40px 60px 80px; /* Extra left padding for toolbar */
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  min-height: 400px;
+}
+
+.demo-editor h3 {
+  margin: 0 0 16px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #111;
+}
+
+.demo-instruction {
+  margin: 0 0 32px;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Editor content */
+.editor-content {
+  padding: 24px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  min-height: 200px;
+}
+
+.editor-content h1 {
+  margin: 0 0 16px;
+  font-size: 28px;
+}
+
+.editor-content p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.editor-content code {
+  padding: 4px 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Monaco', monospace;
+  font-size: 13px;
+}
+
+/* Canvas placeholder */
+.canvas-placeholder {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: center;
+}
+
+.canvas-shape {
+  background: #111;
+}
+
+.canvas-shape.circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+}
+
+.canvas-shape.rectangle {
+  width: 80px;
+  height: 60px;
+  border-radius: 4px;
+}
+
+.canvas-shape.line {
+  width: 100px;
+  height: 3px;
+  transform: rotate(-45deg);
+}
+
+/* Page builder placeholder */
+.page-builder-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-block {
+  padding: 24px;
+  background: #fff;
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 600;
+  color: #666;
+}
+
+/* Inspector placeholder */
+.inspect-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inspect-element {
+  padding: 24px;
+  background: #fff;
+  border: 2px solid #00aaff;
+  border-radius: 8px;
+}
+
+.inspect-element code {
+  background: none;
+  padding: 0;
+  color: #00aaff;
+}
+
+.spacing-viz {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(255, 149, 0, 0.1);
+  border-left: 3px solid #ff9500;
+  font-size: 12px;
+  font-family: monospace;
+  color: #666;
+}
+
+/* Action log */
+.demo-action-log {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.demo-action-log h4 {
+  margin: 0 0 16px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111;
+}
+
+.log-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.log-entry {
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  font-family: 'SF Mono', 'Monaco', monospace;
+  font-size: 12px;
+  color: #666;
+}
+
+.log-empty {
+  padding: 24px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .toolbar-demo {
+    background: #1a1a1a;
+  }
+
+  .demo-header h2 {
+    color: #fff;
+  }
+
+  .mode-button {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #fff;
+  }
+
+  .mode-button:hover {
+    border-color: #fff;
+  }
+
+  .mode-button.active {
+    background: #fff;
+    border-color: #fff;
+    color: #000;
+  }
+
+  .demo-content-card,
+  .demo-action-log {
+    background: #2a2a2a;
+  }
+
+  .demo-editor h3,
+  .demo-action-log h4 {
+    color: #fff;
+  }
+
+  .demo-instruction {
+    color: #999;
+  }
+
+  .editor-content {
+    background: #1a1a1a;
+  }
+
+  .editor-content h1,
+  .editor-content p {
+    color: #fff;
+  }
+
+  .editor-content code {
+    background: #333;
+  }
+
+  .page-block {
+    background: #2a2a2a;
+    border-color: #444;
+  }
+
+  .inspect-element {
+    background: #2a2a2a;
+  }
+
+  .log-entry {
+    background: #1a1a1a;
+  }
+}

@@ -1,0 +1,4 @@
+Note: Placeholder - replace with actual 512x512 PNG icon
+You can create icons using:
+- Figma/Sketch/Photoshop
+- Or online tools like realfavicongenerator.net

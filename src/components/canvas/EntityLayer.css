@@ -1,0 +1,30 @@
+/**
+ * EntityLayer styles
+ */
+
+.entity-layer {
+  pointer-events: auto;
+}
+
+.entity-card {
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+  transform-origin: center;
+}
+
+.entity-card.selected {
+  outline: 3px solid #000;
+  outline-offset: 4px;
+  z-index: 100 !important;
+}
+
+.entity-card.dragging {
+  opacity: 0.8;
+  transition: none;
+  z-index: 1000 !important;
+}
+
+/* Prevent text selection during drag */
+.entity-card * {
+  user-select: none;
+  -webkit-user-select: none;
+}

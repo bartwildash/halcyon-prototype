@@ -1,0 +1,158 @@
+/* StickerCard - Rough-cut paper stickers with shadow */
+
+.sticker-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: #ffffff;
+  border: 2px solid #000000;
+  border-radius: 8px;
+  box-shadow:
+    3px 3px 0 rgba(0, 0, 0, 0.15),
+    6px 6px 12px rgba(0, 0, 0, 0.08);
+  cursor: move;
+  user-select: none;
+  position: relative;
+
+  /* Rough hand-cut edge effect */
+  filter: url(#sticker-wobble);
+
+  /* Slight rotation for organic feel */
+  transform: rotate(var(--sticker-rotation, 0deg));
+
+  transition: all 200ms ease;
+}
+
+.sticker-card:hover {
+  transform: rotate(var(--sticker-rotation, 0deg)) translateY(-4px) scale(1.05);
+  box-shadow:
+    4px 4px 0 rgba(0, 0, 0, 0.2),
+    8px 8px 16px rgba(0, 0, 0, 0.12);
+}
+
+.sticker-card:active {
+  transform: rotate(var(--sticker-rotation, 0deg)) scale(0.98);
+  box-shadow:
+    2px 2px 0 rgba(0, 0, 0, 0.15),
+    4px 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.sticker-card.selected {
+  border-width: 3px;
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.1),
+    3px 3px 0 rgba(0, 0, 0, 0.15),
+    6px 6px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Size variants */
+.sticker-small {
+  padding: 0.5rem;
+}
+
+.sticker-small .sticker-icon {
+  font-size: 1.5rem;
+}
+
+.sticker-small .sticker-label {
+  font-size: 0.625rem;
+}
+
+.sticker-medium {
+  padding: 0.75rem;
+}
+
+.sticker-medium .sticker-icon {
+  font-size: 2rem;
+}
+
+.sticker-medium .sticker-label {
+  font-size: 0.75rem;
+}
+
+.sticker-large {
+  padding: 1rem;
+}
+
+.sticker-large .sticker-icon {
+  font-size: 3rem;
+}
+
+.sticker-large .sticker-label {
+  font-size: 0.875rem;
+}
+
+/* Icon */
+.sticker-icon {
+  line-height: 1;
+  display: block;
+}
+
+/* Label */
+.sticker-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #666666;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+/* Wobble SVG filter for rough edges */
+.sticker-card::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  pointer-events: none;
+}
+
+/* Touch feedback */
+@media (hover: none) and (pointer: coarse) {
+  .sticker-card:active {
+    transform: rotate(var(--sticker-rotation, 0deg)) scale(0.95);
+  }
+}
+
+/* Focus states */
+.sticker-card:focus-visible {
+  outline: 3px solid #000000;
+  outline-offset: 2px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sticker-small {
+    padding: 0.375rem;
+  }
+
+  .sticker-small .sticker-icon {
+    font-size: 1.25rem;
+  }
+
+  .sticker-medium {
+    padding: 0.5rem;
+  }
+
+  .sticker-medium .sticker-icon {
+    font-size: 1.75rem;
+  }
+
+  .sticker-large {
+    padding: 0.75rem;
+  }
+
+  .sticker-large .sticker-icon {
+    font-size: 2.5rem;
+  }
+}
+
+/* SVG wobble filter definition */
+svg#sticker-svg-filters {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
