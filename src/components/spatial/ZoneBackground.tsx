@@ -34,56 +34,61 @@ export const ZONES: Zone[] = [
   {
     id: 'lake',
     name: 'Lake',
-    x: 2000, // Center of 4000px canvas
-    y: 1250, // Center of 2500px canvas
+    // Absolute canvas coords (5000,5000 is center of 10000x10000)
+    x: 5000,
+    y: 5000,
     width: 1200,
     height: 900,
-    colorPrimary: 'rgba(147, 197, 253, 0.15)', // Light blue
-    colorSecondary: 'rgba(96, 165, 250, 0.08)',
+    colorPrimary: 'rgba(96, 165, 250, 0.35)', // Light blue - more visible
+    colorSecondary: 'rgba(59, 130, 246, 0.15)',
     noiseIntensity: 0.3,
   },
   {
     id: 'mountain',
     name: 'Mt. Crumpit',
-    x: 3200, // NE quadrant
-    y: 650,
+    // NE: 1200 right, 600 up from center
+    x: 5000 + 1200,
+    y: 5000 - 600,
     width: 1400,
     height: 1000,
-    colorPrimary: 'rgba(156, 163, 175, 0.12)', // Cool gray
-    colorSecondary: 'rgba(107, 114, 128, 0.08)',
+    colorPrimary: 'rgba(156, 163, 175, 0.30)', // Cool gray - more visible
+    colorSecondary: 'rgba(107, 114, 128, 0.15)',
     noiseIntensity: 0.5,
   },
   {
     id: 'meadow',
     name: 'Meadow',
-    x: 800, // NW quadrant
-    y: 650,
+    // NW: 1200 left, 600 up from center
+    x: 5000 - 1200,
+    y: 5000 - 600,
     width: 1400,
     height: 1000,
-    colorPrimary: 'rgba(167, 243, 208, 0.12)', // Soft green
-    colorSecondary: 'rgba(110, 231, 183, 0.06)',
+    colorPrimary: 'rgba(110, 231, 183, 0.30)', // Soft green - more visible
+    colorSecondary: 'rgba(52, 211, 153, 0.12)',
     noiseIntensity: 0.2,
   },
   {
     id: 'canyon',
     name: 'Canyon',
-    x: 500, // W side
-    y: 1450,
+    // W: 1500 left, 200 down from center
+    x: 5000 - 1500,
+    y: 5000 + 200,
     width: 1000,
     height: 800,
-    colorPrimary: 'rgba(253, 186, 116, 0.12)', // Warm orange
-    colorSecondary: 'rgba(251, 146, 60, 0.06)',
+    colorPrimary: 'rgba(251, 146, 60, 0.30)', // Warm orange - more visible
+    colorSecondary: 'rgba(249, 115, 22, 0.12)',
     noiseIntensity: 0.4,
   },
   {
     id: 'workshop',
     name: 'Workshop',
-    x: 2000, // S center
-    y: 2100,
+    // S: center, 850 down
+    x: 5000,
+    y: 5000 + 850,
     width: 1600,
     height: 700,
-    colorPrimary: 'rgba(120, 113, 108, 0.10)', // Stone gray
-    colorSecondary: 'rgba(87, 83, 78, 0.05)',
+    colorPrimary: 'rgba(120, 113, 108, 0.25)', // Stone gray - more visible
+    colorSecondary: 'rgba(87, 83, 78, 0.10)',
     noiseIntensity: 0.35,
   },
 ]

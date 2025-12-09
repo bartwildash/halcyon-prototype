@@ -9,20 +9,45 @@ import { useSpatialStore } from '../../stores/spatialStore'
 import './ToolButton.css'
 
 // Tool categories
-type ToolCategory = 'modes' | 'shapes' | 'apps' | 'view'
+type ToolCategory = 'modes' | 'shapes' | 'apps' | 'view' | 'data'
 
 interface ToolButtonProps {
   onRecenter?: () => void
+  onExport?: () => void
+  onImport?: () => void
+  onClearAll?: () => void
+  // App visibility toggles
+  showTimer?: boolean
+  onToggleTimer?: () => void
+  showFlipClock?: boolean
+  onToggleFlipClock?: () => void
+  showWeather?: boolean
+  onToggleWeather?: () => void
+  showGraph?: boolean
+  onToggleGraph?: () => void
 }
 
-export function ToolButton({ onRecenter }: ToolButtonProps) {
+export function ToolButton({
+  onRecenter,
+  onExport,
+  onImport,
+  onClearAll,
+  showTimer,
+  onToggleTimer,
+  showFlipClock,
+  onToggleFlipClock,
+  showWeather,
+  onToggleWeather,
+  showGraph,
+  onToggleGraph,
+}: ToolButtonProps) {
   const { interactionMode, setInteractionMode, space, setZoom } = useSpatialStore()
 
   const [isOpen, setIsOpen] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
-  const [position, setPosition] = useState({ x: 20, y: 100 })
+  // Position in bottom-left corner with inset
+  const [position, setPosition] = useState({ x: 20, y: window.innerHeight - 80 })
   const [activeCategory, setActiveCategory] = useState<ToolCategory | null>(null)
-  const [activeApps, setActiveApps] = useState<Set<string>>(new Set())
 
   const buttonRef = useRef<HTMLDivElement>(null)
   const holdTimer = useRef<number | null>(null)
@@ -123,18 +148,6 @@ export function ToolButton({ onRecenter }: ToolButtonProps) {
     setZoom(newZoom)
   }
 
-  const toggleApp = (appId: string) => {
-    setActiveApps(prev => {
-      const next = new Set(prev)
-      if (next.has(appId)) {
-        next.delete(appId)
-      } else {
-        next.add(appId)
-      }
-      return next
-    })
-  }
-
   // Mode icons
   const modeIcon = {
     pan: '✋',
@@ -182,7 +195,7 @@ export function ToolButton({ onRecenter }: ToolButtonProps) {
             <button
               className={`tool-category-tab ${activeCategory === 'apps' ? 'tool-category-tab--active' : ''}`}
               onClick={() => setActiveCategory(activeCategory === 'apps' ? null : 'apps')}
-              title="Mini apps"
+              title="Mini apps & gadgets"
             >
               📱
             </button>
@@ -192,6 +205,13 @@ export function ToolButton({ onRecenter }: ToolButtonProps) {
               title="View controls"
             >
               🔍
+            </button>
+            <button
+              className={`tool-category-tab ${activeCategory === 'data' ? 'tool-category-tab--active' : ''}`}
+              onClick={() => setActiveCategory(activeCategory === 'data' ? null : 'data')}
+              title="Import/Export"
+            >
+              💾
             </button>
           </div>
 
@@ -239,29 +259,29 @@ export function ToolButton({ onRecenter }: ToolButtonProps) {
 
           {activeCategory === 'apps' && (
             <div className="tool-button-panel">
-              <div className="tool-panel-title">Mini Apps</div>
+              <div className="tool-panel-title">Gadgets</div>
               <div className="tool-button-grid">
                 <button
-                  className={`tool-item ${activeApps.has('timer') ? 'tool-item--active' : ''}`}
-                  onClick={() => toggleApp('timer')}
+                  className={`tool-item ${showTimer ? 'tool-item--active' : ''}`}
+                  onClick={onToggleTimer}
                 >
-                  ⏱️ Timer
+                  ⏱️ Pomodoro
                 </button>
                 <button
-                  className={`tool-item ${activeApps.has('clock') ? 'tool-item--active' : ''}`}
-                  onClick={() => toggleApp('clock')}
+                  className={`tool-item ${showFlipClock ? 'tool-item--active' : ''}`}
+                  onClick={onToggleFlipClock}
                 >
-                  🕐 Clock
+                  🕐 Flip Clock
                 </button>
                 <button
-                  className={`tool-item ${activeApps.has('weather') ? 'tool-item--active' : ''}`}
-                  onClick={() => toggleApp('weather')}
+                  className={`tool-item ${showWeather ? 'tool-item--active' : ''}`}
+                  onClick={onToggleWeather}
                 >
                   🌤️ Weather
                 </button>
                 <button
-                  className={`tool-item ${activeApps.has('graph') ? 'tool-item--active' : ''}`}
-                  onClick={() => toggleApp('graph')}
+                  className={`tool-item ${showGraph ? 'tool-item--active' : ''}`}
+                  onClick={onToggleGraph}
                 >
                   📊 Graph
                 </button>
@@ -284,6 +304,26 @@ export function ToolButton({ onRecenter }: ToolButtonProps) {
                 </button>
                 <button className="tool-item" onClick={onRecenter}>
                   🎯 Recenter
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeCategory === 'data' && (
+            <div className="tool-button-panel">
+              <div className="tool-panel-title">Data</div>
+              <div className="tool-button-grid">
+                <button className="tool-item" onClick={onExport}>
+                  📤 Export
+                </button>
+                <button className="tool-item" onClick={onImport}>
+                  📥 Import
+                </button>
+                <button
+                  className="tool-item tool-item--danger"
+                  onClick={onClearAll}
+                >
+                  🗑️ Clear All
                 </button>
               </div>
             </div>

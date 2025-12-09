@@ -172,6 +172,15 @@
   padding: 12px;
 }
 
+.tool-item--danger {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.tool-item--danger:hover {
+  background: #fee2e2;
+}
+
 /* Responsive adjustments */
 @media (max-width: 480px) {
   .tool-button-main {

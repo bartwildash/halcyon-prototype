@@ -14,7 +14,6 @@ import { GraphView } from '../components/miniapps/GraphView'
 import { Weather } from '../components/miniapps/Weather'
 import { PomodoroTimer } from '../components/gadgets/pomodoro/PomodoroTimer'
 import { FlipClock } from '../components/gadgets/flip-clock/FlipClock'
-import { CrumpitBoard } from '../components/spatial/CrumpitBoard'
 import { PlanBoard } from '../components/spatial/PlanBoard'
 import { useSync } from '../hooks/useSync'
 import { exportSpace, importSpace, pickImportFile } from '../utils/exportImport'
@@ -23,15 +22,13 @@ import '../styles/spatial.css'
 
 const SPACE_ID = 'demo-space'
 
-type MiniApp = 'graph' | 'weather' | 'timer' | 'clock'
-
 export function SpatialDemo() {
   const { space, createCard, updateCard, setPan, setZoom, deleteAllCards, toolMode, setToolMode } = useSpatialStore()
-  const [openMiniApp, setOpenMiniApp] = useState<MiniApp | null>(null)
   const [instructionsExpanded, setInstructionsExpanded] = useState(false)
-  const [showTimer, setShowTimer] = useState(true)
-  const [showFlipClock, setShowFlipClock] = useState(true)
-  const [showCrumpit, setShowCrumpit] = useState(false)
+  const [showTimer, setShowTimer] = useState(false)
+  const [showFlipClock, setShowFlipClock] = useState(false)
+  const [showWeather, setShowWeather] = useState(false)
+  const [showGraph, setShowGraph] = useState(false)
   const [showPlan, setShowPlan] = useState(false)
   const [showCommandPalette, setShowCommandPalette] = useState(false)
   const [showKeyboardGuide, setShowKeyboardGuide] = useState(false)
@@ -46,7 +43,7 @@ export function SpatialDemo() {
       }
 
       // Skip if any modal is open (except for Escape)
-      const modalOpen = showCommandPalette || showKeyboardGuide || showCrumpit || showPlan
+      const modalOpen = showCommandPalette || showKeyboardGuide || showPlan
       if (modalOpen && e.key !== 'Escape') {
         return
       }
@@ -104,19 +101,11 @@ export function SpatialDemo() {
         case '1':
           e.preventDefault()
           // THINK mode (close modals, stay on canvas)
-          setShowCrumpit(false)
           setShowPlan(false)
           break
         case '2':
           e.preventDefault()
-          // CRUMPIT mode
-          setShowPlan(false)
-          setShowCrumpit(true)
-          break
-        case '3':
-          e.preventDefault()
           // PLAN mode
-          setShowCrumpit(false)
           setShowPlan(true)
           break
 
@@ -144,8 +133,6 @@ export function SpatialDemo() {
             setShowKeyboardGuide(false)
           } else if (showCommandPalette) {
             setShowCommandPalette(false)
-          } else if (showCrumpit) {
-            setShowCrumpit(false)
           } else if (showPlan) {
             setShowPlan(false)
           }
@@ -155,7 +142,7 @@ export function SpatialDemo() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [space, showCommandPalette, showKeyboardGuide, showCrumpit, showPlan, setToolMode, createCard, setZoom])
+  }, [space, showCommandPalette, showKeyboardGuide, showPlan, setToolMode, createCard, setZoom])
 
   // Export handler
   const handleExport = useCallback(() => {
@@ -186,14 +173,20 @@ export function SpatialDemo() {
   const hasInitialized = useRef(false)
 
   // Navigate to landmark with smooth animation
+  // Landmarks use viewport-relative coords (0,0 = canvas center at 5000,5000)
   const handleNavigateToLandmark = (x: number, y: number) => {
     if (!space) return
 
     isNavigating.current = true
 
-    // Target position (centered on screen)
-    const targetX = x - window.innerWidth / 2
-    const targetY = y - window.innerHeight / 2
+    // Convert viewport-relative landmark coords to absolute canvas coords
+    const canvasX = 5000 + x
+    const canvasY = 5000 + y
+
+    // Calculate scroll position to center this point on screen
+    // scroll = -(canvasPos * zoom - viewportCenter)
+    const targetX = -(canvasX * space.zoom - window.innerWidth / 2)
+    const targetY = -(canvasY * space.zoom - window.innerHeight / 2)
 
     // Current position
     const startX = space.scrollX
@@ -233,17 +226,22 @@ export function SpatialDemo() {
   const handleRecenter = () => {
     if (!space) return
 
-    // Get current viewport center
-    const viewportCenterX = -space.scrollX + window.innerWidth / 2
-    const viewportCenterY = -space.scrollY + window.innerHeight / 2
+    // Get current viewport center in canvas coordinates
+    // The scroll is negative, so: canvasPos = (viewportPos - scrollPos) / zoom
+    const viewportCenterCanvasX = (window.innerWidth / 2 - space.scrollX) / space.zoom
+    const viewportCenterCanvasY = (window.innerHeight / 2 - space.scrollY) / space.zoom
+
+    // Convert to viewport-relative coords (landmarks use 0,0 = center at 5000,5000)
+    const viewportRelX = viewportCenterCanvasX - 5000
+    const viewportRelY = viewportCenterCanvasY - 5000
 
     // Find nearest landmark
     let nearestLandmark = LANDMARKS[0]
     let minDistance = Infinity
 
     for (const landmark of LANDMARKS) {
-      const dx = landmark.x - viewportCenterX
-      const dy = landmark.y - viewportCenterY
+      const dx = landmark.x - viewportRelX
+      const dy = landmark.y - viewportRelY
       const distance = Math.sqrt(dx * dx + dy * dy)
 
       if (distance < minDistance) {
@@ -304,208 +302,224 @@ export function SpatialDemo() {
     setPan(newScrollX, newScrollY)
   }
 
-  // Initialize bench demo on first load
+  // Initialize Halcyon spatial zones demo on first load
   useEffect(() => {
     if (!space || hasInitialized.current) return
 
     // Check if demo already exists - prevent re-initialization
-    const hasBenchDemo = space.cards.some(card => card.name === 'The Bench')
-    if (hasBenchDemo || space.cards.length > 0) return
+    const hasHalcyonDemo = space.cards.some(card => card.name === 'Welcome to Halcyon')
+    if (hasHalcyonDemo || space.cards.length > 0) return
 
     // Mark as initialized to prevent re-running
     hasInitialized.current = true
 
-    const centerX = 500
-    const centerY = 300
+    // Canvas center is at 5000,5000 in the 10000x10000 space
+    // Landmarks use viewport-relative coords (0,0 = center)
+    // To place cards in zones, we use: 5000 + landmark.x, 5000 + landmark.y
 
-    // ========== BENCH DEMO: TWO VIEWS, ONE MIND ==========
+    // ========== LAKE ZONE (CENTER) - Writing & Reflection ==========
+    const lakeX = 5000 // center
+    const lakeY = 5000
 
-    // Hero: The Bench concept
     setTimeout(() => {
-      const cardId = createCard(centerX, centerY - 350, 'The Bench')
+      const cardId = createCard(lakeX - 100, lakeY - 200, 'Welcome to Halcyon')
       updateCard(cardId, {
         cardType: 'note',
-        color: '#f4e2c4', // OSB chipboard color
-        width: 260,
-        height: 80,
+        color: '#E0F2FE', // Lake blue
+        width: 280,
+        height: 70,
       })
     }, 50)
 
     setTimeout(() => {
-      const cardId = createCard(centerX, centerY - 240, 'A workspace with two views:\nwhere things are + how they connect')
+      const cardId = createCard(lakeX - 100, lakeY - 100, '🏞️ The Lake')
       updateCard(cardId, {
         cardType: 'note',
-        color: '#F5F5F0',
-        width: 300,
+        color: '#BAE6FD',
+        width: 220,
       })
-    }, 100)
+    }, 80)
 
-    // Left side: Spatial Canvas explanation
     setTimeout(() => {
-      const cardId = createCard(centerX - 450, centerY - 120, 'Spatial Canvas')
+      const cardId = createCard(lakeX - 100, lakeY, 'Quiet surface for writing,\ndrafting documents,\ncalm thinking.')
       updateCard(cardId, {
         cardType: 'note',
-        color: '#E8EEF2',
-        width: 200,
+        color: '#F0F9FF',
+        width: 240,
+      })
+    }, 110)
+
+    setTimeout(() => {
+      const cardId = createCard(lakeX + 200, lakeY - 50, '✏️')
+      updateCard(cardId, { cardType: 'sticker', icon: '✏️', size: 'large' })
+    }, 140)
+
+    // ========== MOUNTAIN ZONE (NE) - Crumpit Task Triage ==========
+    const mountainX = 5000 + 1200
+    const mountainY = 5000 - 600
+
+    setTimeout(() => {
+      const cardId = createCard(mountainX - 150, mountainY - 150, '⛰️ Mt. Crumpit')
+      updateCard(cardId, {
+        cardType: 'note',
+        color: '#E5E7EB', // Mountain gray
+        width: 240,
         height: 60,
       })
-    }, 150)
+    }, 170)
 
     setTimeout(() => {
-      const cardId = createCard(centerX - 450, centerY, 'Position = meaning\nFreeform thinking\nInk + stickers + cards')
+      const cardId = createCard(mountainX - 150, mountainY - 60, 'Task triage on the mountain slope.\nPrioritize what matters NOW.')
       updateCard(cardId, {
         cardType: 'note',
-        color: '#F0EBE3',
-        width: 200,
+        color: '#F3F4F6',
+        width: 260,
       })
     }, 200)
 
     setTimeout(() => {
-      const cardId = createCard(centerX - 520, centerY + 100, '🎨')
-      updateCard(cardId, { cardType: 'sticker', icon: '🎨', size: 'medium' })
-    }, 250)
+      const cardId = createCard(mountainX + 150, mountainY - 100, '📋')
+      updateCard(cardId, { cardType: 'sticker', icon: '📋', size: 'large' })
+    }, 230)
 
+    // Sample tasks in mountain zone
     setTimeout(() => {
-      const cardId = createCard(centerX - 380, centerY + 100, '✏️')
-      updateCard(cardId, { cardType: 'sticker', icon: '✏️', size: 'medium' })
-    }, 280)
-
-    // Right side: Logic View explanation
-    setTimeout(() => {
-      const cardId = createCard(centerX + 450, centerY - 120, 'Logic View')
-      updateCard(cardId, {
-        cardType: 'note',
-        color: '#E8F0E8',
-        width: 200,
-        height: 60,
-      })
-    }, 300)
-
-    setTimeout(() => {
-      const cardId = createCard(centerX + 450, centerY, 'Connections = structure\nDependencies + flows\nGraphs + pipelines')
-      updateCard(cardId, {
-        cardType: 'note',
-        color: '#F0EBE3',
-        width: 200,
-      })
-    }, 350)
-
-    setTimeout(() => {
-      const cardId = createCard(centerX + 380, centerY + 100, '🔗')
-      updateCard(cardId, { cardType: 'sticker', icon: '🔗', size: 'medium' })
-    }, 400)
-
-    setTimeout(() => {
-      const cardId = createCard(centerX + 520, centerY + 100, '📊')
-      updateCard(cardId, { cardType: 'sticker', icon: '📊', size: 'medium' })
-    }, 430)
-
-    // Center: The connection
-    setTimeout(() => {
-      const cardId = createCard(centerX, centerY - 40, '↔️')
-      updateCard(cardId, { cardType: 'sticker', icon: '↔️', size: 'large' })
-    }, 460)
-
-    setTimeout(() => {
-      const cardId = createCard(centerX, centerY + 40, 'Same data\nTwo lenses')
-      updateCard(cardId, {
-        cardType: 'note',
-        color: '#ffffff',
-        width: 140,
-      })
-    }, 500)
-
-    // Bottom: The 6 graphs preview
-    setTimeout(() => {
-      const cardId = createCard(centerX - 300, centerY + 200, 'Task Graph\n"What blocks what"')
-      updateCard(cardId, {
-        cardType: 'note',
-        color: '#FFE4E4',
-        width: 160,
-      })
-    }, 550)
-
-    setTimeout(() => {
-      const cardId = createCard(centerX - 100, centerY + 200, 'People Graph\n"Who works with who"')
-      updateCard(cardId, {
-        cardType: 'note',
-        color: '#E4E4FF',
-        width: 160,
-      })
-    }, 600)
-
-    setTimeout(() => {
-      const cardId = createCard(centerX + 100, centerY + 200, 'Pipeline View\n"Phase → phase"')
-      updateCard(cardId, {
-        cardType: 'note',
-        color: '#E4FFE4',
-        width: 160,
-      })
-    }, 650)
-
-    setTimeout(() => {
-      const cardId = createCard(centerX + 300, centerY + 200, 'Zone Map\n"Life architecture"')
-      updateCard(cardId, {
-        cardType: 'note',
-        color: '#FFF4E4',
-        width: 160,
-      })
-    }, 700)
-
-    // Example task cards (showing structure)
-    setTimeout(() => {
-      const cardId = createCard(centerX - 200, centerY + 350, 'Design system')
-      updateCard(cardId, {
-        cardType: 'task',
-        completed: true,
-        energy: 'high_focus',
-        signal: 'normal',
-      })
-    }, 750)
-
-    setTimeout(() => {
-      const cardId = createCard(centerX, centerY + 350, 'Build components')
+      const cardId = createCard(mountainX - 200, mountainY + 80, 'Review sprint priorities')
       updateCard(cardId, {
         cardType: 'task',
         completed: false,
         energy: 'high_focus',
         signal: 'loud',
       })
-    }, 800)
+    }, 260)
 
     setTimeout(() => {
-      const cardId = createCard(centerX + 200, centerY + 350, 'Ship v1')
+      const cardId = createCard(mountainX + 50, mountainY + 80, 'Clear blocked items')
       updateCard(cardId, {
         cardType: 'task',
         completed: false,
         energy: 'medium',
         signal: 'normal',
       })
-    }, 850)
+    }, 290)
 
-    // Arrow stickers showing flow
-    setTimeout(() => {
-      const cardId = createCard(centerX - 100, centerY + 340, '→')
-      updateCard(cardId, { cardType: 'sticker', icon: '→', size: 'small' })
-    }, 880)
+    // ========== MEADOW ZONE (NW) - Exploration & 3D ==========
+    const meadowX = 5000 - 1200
+    const meadowY = 5000 - 600
 
     setTimeout(() => {
-      const cardId = createCard(centerX + 100, centerY + 340, '→')
-      updateCard(cardId, { cardType: 'sticker', icon: '→', size: 'small' })
-    }, 900)
+      const cardId = createCard(meadowX - 100, meadowY - 150, '🌿 The Meadow')
+      updateCard(cardId, {
+        cardType: 'note',
+        color: '#D1FAE5', // Meadow green
+        width: 200,
+        height: 60,
+      })
+    }, 320)
 
-    // Footer
     setTimeout(() => {
-      const cardId = createCard(centerX, centerY + 460, 'Click anywhere to add cards\nDrag to move • Scroll to zoom')
+      const cardId = createCard(meadowX - 100, meadowY - 60, 'Open exploration space.\nBrowser, 3D models,\nfreeform discovery.')
+      updateCard(cardId, {
+        cardType: 'note',
+        color: '#ECFDF5',
+        width: 220,
+      })
+    }, 350)
+
+    setTimeout(() => {
+      const cardId = createCard(meadowX + 150, meadowY - 100, '🔍')
+      updateCard(cardId, { cardType: 'sticker', icon: '🔍', size: 'large' })
+    }, 380)
+
+    setTimeout(() => {
+      const cardId = createCard(meadowX - 50, meadowY + 60, '🌐')
+      updateCard(cardId, { cardType: 'sticker', icon: '🌐', size: 'medium' })
+    }, 410)
+
+    // ========== CANYON ZONE (W) - Timeline & History ==========
+    const canyonX = 5000 - 1500
+    const canyonY = 5000 + 200
+
+    setTimeout(() => {
+      const cardId = createCard(canyonX - 100, canyonY - 150, '🏜️ The Canyon')
+      updateCard(cardId, {
+        cardType: 'note',
+        color: '#FED7AA', // Canyon orange
+        width: 200,
+        height: 60,
+      })
+    }, 440)
+
+    setTimeout(() => {
+      const cardId = createCard(canyonX - 100, canyonY - 60, 'Timeline of logs and history.\nLayers of the past.')
+      updateCard(cardId, {
+        cardType: 'note',
+        color: '#FFF7ED',
+        width: 220,
+      })
+    }, 470)
+
+    setTimeout(() => {
+      const cardId = createCard(canyonX + 140, canyonY - 100, '📅')
+      updateCard(cardId, { cardType: 'sticker', icon: '📅', size: 'large' })
+    }, 500)
+
+    // ========== WORKSHOP ZONE (S) - Settings & Tools ==========
+    const workshopX = 5000
+    const workshopY = 5000 + 850
+
+    setTimeout(() => {
+      const cardId = createCard(workshopX - 100, workshopY - 150, '🔧 The Workshop')
+      updateCard(cardId, {
+        cardType: 'note',
+        color: '#D6D3D1', // Workshop stone
+        width: 200,
+        height: 60,
+      })
+    }, 530)
+
+    setTimeout(() => {
+      const cardId = createCard(workshopX - 100, workshopY - 60, 'Tools, settings, and configuration.\nTune your workspace.')
+      updateCard(cardId, {
+        cardType: 'note',
+        color: '#F5F5F4',
+        width: 240,
+      })
+    }, 560)
+
+    setTimeout(() => {
+      const cardId = createCard(workshopX + 180, workshopY - 100, '⚙️')
+      updateCard(cardId, { cardType: 'sticker', icon: '⚙️', size: 'large' })
+    }, 590)
+
+    // ========== NAVIGATION HINTS ==========
+    setTimeout(() => {
+      const cardId = createCard(lakeX - 100, lakeY + 150, 'Use the navigation bar above\nto jump between zones.')
       updateCard(cardId, {
         cardType: 'note',
         color: '#EBEBEB',
-        width: 280,
+        width: 260,
       })
-    }, 950)
+    }, 620)
+
+    setTimeout(() => {
+      const cardId = createCard(lakeX - 100, lakeY + 260, 'Pan: drag canvas\nZoom: scroll/pinch\nCreate: double-click')
+      updateCard(cardId, {
+        cardType: 'note',
+        color: '#F8F8F8',
+        width: 200,
+      })
+    }, 650)
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [space])
+
+  // Clear all handler with confirmation
+  const handleClearAll = useCallback(() => {
+    if (confirm('Delete all cards? This cannot be undone.')) {
+      deleteAllCards()
+    }
+  }, [deleteAllCards])
 
   return (
     <>
@@ -513,27 +527,33 @@ export function SpatialDemo() {
       <Space spaceId={SPACE_ID} />
 
       {/* Floating Tool Button - tap to open, hold to move */}
-      <ToolButton onRecenter={handleRecenter} />
+      <ToolButton
+        onRecenter={handleRecenter}
+        onExport={handleExport}
+        onImport={handleImport}
+        onClearAll={handleClearAll}
+        showTimer={showTimer}
+        onToggleTimer={() => setShowTimer(prev => !prev)}
+        showFlipClock={showFlipClock}
+        onToggleFlipClock={() => setShowFlipClock(prev => !prev)}
+        showWeather={showWeather}
+        onToggleWeather={() => setShowWeather(prev => !prev)}
+        showGraph={showGraph}
+        onToggleGraph={() => setShowGraph(prev => !prev)}
+      />
 
-      {/* MiniApp windows */}
-      {openMiniApp === 'graph' && (
-        <GraphView onClose={() => setOpenMiniApp(null)} />
-      )}
-      {openMiniApp === 'weather' && (
-        <Weather onClose={() => setOpenMiniApp(null)} />
-      )}
-      {openMiniApp === 'timer' && (
-        <PomodoroTimer onClose={() => setOpenMiniApp(null)} />
-      )}
-
-      {/* Default Pomodoro Timer - always visible */}
+      {/* Gadget windows - toggled from ToolButton */}
       {showTimer && (
         <PomodoroTimer onClose={() => setShowTimer(false)} />
       )}
-
-      {/* Default Flip Clock - always visible */}
       {showFlipClock && (
         <FlipClock onClose={() => setShowFlipClock(false)} />
+      )}
+      {showWeather && (
+        <Weather onClose={() => setShowWeather(false)} />
+      )}
+      {showGraph && (
+        <GraphView onClose={() => setShowGraph(false)} />
       )}
 
       {/* Landmark Navigator - top center */}
@@ -563,51 +583,11 @@ export function SpatialDemo() {
           onClick={() => setShowPlan(true)}
           className="button"
           style={{ fontSize: 14, fontWeight: 600, background: '#22c55e', color: 'white' }}
-          title="Open Plan - today view"
+          title="Open Plan - today view (2)"
         >
           Plan
         </button>
-        <button
-          onClick={() => setShowCrumpit(true)}
-          className="button"
-          style={{ fontSize: 14, fontWeight: 600, background: '#000', color: 'white' }}
-          title="Open Crumpit task triage board"
-        >
-          Crumpit
-        </button>
-        <button
-          onClick={handleExport}
-          className="button"
-          style={{ fontSize: 14, fontWeight: 600, background: '#3b82f6', color: 'white' }}
-          title="Export space to JSON"
-        >
-          Export
-        </button>
-        <button
-          onClick={handleImport}
-          className="button"
-          style={{ fontSize: 14, fontWeight: 600, background: '#8b5cf6', color: 'white' }}
-          title="Import space from JSON"
-        >
-          Import
-        </button>
-        <button
-          onClick={() => {
-            if (confirm('Delete all cards? This cannot be undone.')) {
-              deleteAllCards()
-            }
-          }}
-          className="button"
-          style={{ fontSize: 14, fontWeight: 600, background: '#ff4444', color: 'white' }}
-        >
-          Clear All
-        </button>
       </div>
-
-      {/* Crumpit Board modal */}
-      {showCrumpit && (
-        <CrumpitBoard onClose={() => setShowCrumpit(false)} />
-      )}
 
       {/* Plan Board modal */}
       {showPlan && (
@@ -618,7 +598,6 @@ export function SpatialDemo() {
       <CommandPalette
         isOpen={showCommandPalette}
         onClose={() => setShowCommandPalette(false)}
-        onShowCrumpit={() => setShowCrumpit(true)}
         onShowPlan={() => setShowPlan(true)}
       />
 

@@ -9,14 +9,13 @@
 
 .zone-background {
   position: absolute;
-  /* Canvas dimensions: 4000 x 2500 px */
-  width: 4000px;
-  height: 2500px;
+  /* Cover the entire 10000x10000 canvas space */
+  width: 10000px;
+  height: 10000px;
+  left: 0;
+  top: 0;
   pointer-events: none;
   z-index: 0;
-  /* Center the background in the 10000x10000 space-canvas */
-  left: 3000px;
-  top: 3750px;
 }
 
 /* Hidden SVG filter for noise */

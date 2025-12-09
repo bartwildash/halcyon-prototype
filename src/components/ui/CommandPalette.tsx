@@ -16,11 +16,10 @@ interface Command {
 interface CommandPaletteProps {
   isOpen: boolean
   onClose: () => void
-  onShowCrumpit: () => void
   onShowPlan: () => void
 }
 
-export function CommandPalette({ isOpen, onClose, onShowCrumpit, onShowPlan }: CommandPaletteProps) {
+export function CommandPalette({ isOpen, onClose, onShowPlan }: CommandPaletteProps) {
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -65,19 +64,9 @@ export function CommandPalette({ isOpen, onClose, onShowCrumpit, onShowPlan }: C
       },
     },
     {
-      id: 'mode-crumpit',
-      label: 'CRUMPIT mode (triage)',
-      shortcut: '2',
-      category: 'mode',
-      action: () => {
-        onShowCrumpit()
-        onClose()
-      },
-    },
-    {
       id: 'mode-plan',
       label: 'PLAN mode (today)',
-      shortcut: '3',
+      shortcut: '2',
       category: 'mode',
       action: () => {
         onShowPlan()
@@ -145,7 +134,7 @@ export function CommandPalette({ isOpen, onClose, onShowCrumpit, onShowPlan }: C
         onClose()
       },
     },
-  ], [createCard, space, setToolMode, clearInkStrokes, onClose, onShowCrumpit, onShowPlan])
+  ], [createCard, space, setToolMode, clearInkStrokes, onClose, onShowPlan])
 
   // Filter commands based on query
   const filteredCommands = useMemo(() => {
