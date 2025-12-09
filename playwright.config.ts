@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
+// Use deployed URL if TEST_URL env var is set, otherwise localhost
+const baseURL = process.env.TEST_URL || 'http://localhost:5173'
+const useLocalServer = !process.env.TEST_URL
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -8,7 +12,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -27,9 +31,12 @@ export default defineConfig({
     //   use: { ...devices['Desktop Safari'] },
     // },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-  },
+  // Only start local server if not testing against deployed URL
+  ...(useLocalServer && {
+    webServer: {
+      command: 'npm run dev',
+      url: 'http://localhost:5173',
+      reuseExistingServer: !process.env.CI,
+    },
+  }),
 })
