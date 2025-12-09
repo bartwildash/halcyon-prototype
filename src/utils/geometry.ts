@@ -92,9 +92,15 @@ export function canvasToScreen(
   }
 }
 
+// Zoom constraints - prevent extreme zoom levels
+// Min 0.5 (50%) - can see a nice area but not the entire 10000x10000 canvas
+// Max 2.0 (200%) - can zoom in for detail but not excessively
+export const MIN_ZOOM = 0.5
+export const MAX_ZOOM = 2.0
+
 // Clamp zoom level to valid range
 export function clampZoom(zoom: number): number {
-  return Math.max(0.1, Math.min(3, zoom))
+  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom))
 }
 
 // Viewport culling - check if card is visible in viewport

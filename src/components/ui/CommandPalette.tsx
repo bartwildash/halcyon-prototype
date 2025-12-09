@@ -27,16 +27,22 @@ export function CommandPalette({ isOpen, onClose, onShowPlan }: CommandPalettePr
 
   // Define available commands
   const commands: Command[] = useMemo(() => [
-    // Create commands
+    // Create commands - create cards near current viewport center
     {
       id: 'create-card',
       label: 'Create new card',
       shortcut: 'n',
       category: 'create',
       action: () => {
-        const x = 200 + Math.random() * 400
-        const y = 200 + Math.random() * 400
-        createCard(x, y, '')
+        if (space) {
+          // Calculate viewport center in canvas coordinates
+          const centerCanvasX = (window.innerWidth / 2 - space.scrollX) / space.zoom
+          const centerCanvasY = (window.innerHeight / 2 - space.scrollY) / space.zoom
+          // Add small random offset so cards don't stack exactly
+          const x = centerCanvasX - 100 + Math.random() * 200
+          const y = centerCanvasY - 100 + Math.random() * 200
+          createCard(x, y, '')
+        }
         onClose()
       },
     },
@@ -46,9 +52,15 @@ export function CommandPalette({ isOpen, onClose, onShowPlan }: CommandPalettePr
       shortcut: 't',
       category: 'create',
       action: () => {
-        const x = 200 + Math.random() * 400
-        const y = 200 + Math.random() * 400
-        createCard(x, y, '[ ] New task')
+        if (space) {
+          // Calculate viewport center in canvas coordinates
+          const centerCanvasX = (window.innerWidth / 2 - space.scrollX) / space.zoom
+          const centerCanvasY = (window.innerHeight / 2 - space.scrollY) / space.zoom
+          // Add small random offset so cards don't stack exactly
+          const x = centerCanvasX - 100 + Math.random() * 200
+          const y = centerCanvasY - 100 + Math.random() * 200
+          createCard(x, y, '[ ] New task')
+        }
         onClose()
       },
     },

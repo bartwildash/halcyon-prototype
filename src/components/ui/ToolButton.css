@@ -63,6 +63,12 @@
   animation: menu-slide-in 0.15s ease-out;
 }
 
+/* Menu opens upward when button is in bottom half of screen */
+.tool-button-menu--upward {
+  top: auto;
+  bottom: 0;
+}
+
 @keyframes menu-slide-in {
   from {
     opacity: 0;

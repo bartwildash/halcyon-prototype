@@ -6,6 +6,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useSpatialStore } from '../../stores/spatialStore'
+import { MIN_ZOOM, MAX_ZOOM } from '../../utils/geometry'
 import './ToolButton.css'
 
 // Tool categories
@@ -144,7 +145,7 @@ export function ToolButton({
 
   const handleZoom = (delta: number) => {
     const currentZoom = space?.zoom || 1
-    const newZoom = Math.max(0.25, Math.min(2, currentZoom + delta))
+    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, currentZoom + delta))
     setZoom(newZoom)
   }
 
@@ -173,9 +174,9 @@ export function ToolButton({
         🔨
       </button>
 
-      {/* Expanded menu */}
+      {/* Expanded menu - opens upward when near bottom of screen */}
       {isOpen && (
-        <div className="tool-button-menu">
+        <div className={`tool-button-menu ${position.y > window.innerHeight / 2 ? 'tool-button-menu--upward' : ''}`}>
           {/* Category tabs */}
           <div className="tool-button-categories">
             <button

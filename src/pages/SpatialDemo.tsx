@@ -18,6 +18,7 @@ import { PlanBoard } from '../components/spatial/PlanBoard'
 import { useSync } from '../hooks/useSync'
 import { exportSpace, importSpace, pickImportFile } from '../utils/exportImport'
 import { LANDMARKS } from '../config/landmarks'
+import { MIN_ZOOM, MAX_ZOOM } from '../utils/geometry'
 import '../styles/spatial.css'
 
 const SPACE_ID = 'demo-space'
@@ -79,20 +80,28 @@ export function SpatialDemo() {
           setToolMode('draw')
           break
 
-        // Create shortcuts
+        // Create shortcuts - create cards near current viewport center
         case 'n':
           e.preventDefault()
           if (space) {
-            const x = 200 + Math.random() * 400
-            const y = 200 + Math.random() * 400
+            // Calculate viewport center in canvas coordinates
+            const centerCanvasX = (window.innerWidth / 2 - space.scrollX) / space.zoom
+            const centerCanvasY = (window.innerHeight / 2 - space.scrollY) / space.zoom
+            // Add small random offset so cards don't stack exactly
+            const x = centerCanvasX - 100 + Math.random() * 200
+            const y = centerCanvasY - 100 + Math.random() * 200
             createCard(x, y, '')
           }
           break
         case 't':
           e.preventDefault()
           if (space) {
-            const x = 200 + Math.random() * 400
-            const y = 200 + Math.random() * 400
+            // Calculate viewport center in canvas coordinates
+            const centerCanvasX = (window.innerWidth / 2 - space.scrollX) / space.zoom
+            const centerCanvasY = (window.innerHeight / 2 - space.scrollY) / space.zoom
+            // Add small random offset so cards don't stack exactly
+            const x = centerCanvasX - 100 + Math.random() * 200
+            const y = centerCanvasY - 100 + Math.random() * 200
             createCard(x, y, '[ ] New task')
           }
           break
@@ -258,7 +267,7 @@ export function SpatialDemo() {
     if (!space) return
 
     const oldZoom = space.zoom
-    const newZoom = Math.min(2.0, oldZoom * 1.2)
+    const newZoom = Math.min(MAX_ZOOM, oldZoom * 1.2)
 
     // Zoom toward center of viewport
     const centerX = window.innerWidth / 2
@@ -282,7 +291,7 @@ export function SpatialDemo() {
     if (!space) return
 
     const oldZoom = space.zoom
-    const newZoom = Math.max(0.3, oldZoom * 0.8)
+    const newZoom = Math.max(MIN_ZOOM, oldZoom * 0.8)
 
     // Zoom toward center of viewport
     const centerX = window.innerWidth / 2
