@@ -41,6 +41,7 @@ export function SpatialDemo() {
   const [history, setHistory] = useState<ViewportPosition[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const isNavigating = useRef(false)
+  const hasInitialized = useRef(false)
 
   // Save current position to history
   const saveToHistory = () => {
@@ -211,11 +212,14 @@ export function SpatialDemo() {
 
   // Initialize bench demo on first load
   useEffect(() => {
-    if (!space) return
+    if (!space || hasInitialized.current) return
 
-    // Check if demo already exists
+    // Check if demo already exists - prevent re-initialization
     const hasBenchDemo = space.cards.some(card => card.name === 'The Bench')
-    if (hasBenchDemo) return
+    if (hasBenchDemo || space.cards.length > 0) return
+
+    // Mark as initialized to prevent re-running
+    hasInitialized.current = true
 
     const centerX = 500
     const centerY = 300
