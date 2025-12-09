@@ -26,12 +26,7 @@ export function LandmarkNavigator({ onNavigate }: LandmarkNavigatorProps) {
             }}
             title={landmark.description}
           >
-            <span className="landmark-icon">
-              {landmark.terrain === 'lake' && '🌊'}
-              {landmark.terrain === 'mountain' && '⛰️'}
-              {landmark.terrain === 'canyon' && '🏜️'}
-              {landmark.terrain === 'meadow' && '🌾'}
-            </span>
+            <span className="landmark-icon">{landmark.icon}</span>
             <span className="landmark-name">{landmark.name}</span>
           </button>
         ))}

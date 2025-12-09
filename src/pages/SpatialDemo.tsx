@@ -18,15 +18,8 @@ import { CrumpitBoard } from '../components/spatial/CrumpitBoard'
 import { PlanBoard } from '../components/spatial/PlanBoard'
 import { useSync } from '../hooks/useSync'
 import { exportSpace, importSpace, pickImportFile } from '../utils/exportImport'
+import { LANDMARKS } from '../config/landmarks'
 import '../styles/spatial.css'
-
-// Landmark positions
-const LANDMARKS = [
-  { name: 'Lake', x: 500, y: 300 },
-  { name: 'Mt. Crumpit', x: -200, y: -400 },
-  { name: 'Canyon', x: 800, y: -200 },
-  { name: 'Meadow', x: -400, y: 500 },
-]
 
 const SPACE_ID = 'demo-space'
 

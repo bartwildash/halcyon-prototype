@@ -10,6 +10,8 @@ import { ConnectionsLayer } from './ConnectionsLayer'
 import { SelectionCanvas } from './SelectionCanvas'
 import { BoxFrame } from './BoxFrame'
 import { BenchBackground, type BenchMode } from './BenchBackground'
+import { ZoneBackground } from './ZoneBackground'
+import { EmbeddedCrumpit } from './EmbeddedCrumpit'
 import { InkCanvas } from './InkCanvas'
 import { CardContextMenu } from '../ui/CardContextMenu'
 import { isCardInViewport } from '../../utils/geometry'
@@ -145,6 +147,9 @@ export function Space({ spaceId, backgroundMode = 'osb' }: SpaceProps) {
           willChange: 'transform',
         }}
       >
+        {/* Layer -1: Zone backgrounds (terrain areas) */}
+        <ZoneBackground zoom={zoom} />
+
         {/* Layer 0: Boxes/Frames (background grouping) */}
         {space.boxes.map((box) => (
           <BoxFrame key={box.id} box={box} />
@@ -157,6 +162,9 @@ export function Space({ spaceId, backgroundMode = 'osb' }: SpaceProps) {
         {visibleCards.map((card) => (
           <SpatialCard key={card.id} card={card} />
         ))}
+
+        {/* Layer 3: Fixed embedded apps at landmark locations */}
+        <EmbeddedCrumpit />
       </div>
 
       {/* Selection canvas overlay - for lasso/rectangle selection */}
