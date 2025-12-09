@@ -5,16 +5,14 @@
  * Best for: Large datasets, complex queries, structured data.
  */
 
-import type { StorageAdapter, StorageInfo } from './types'
+import type { StorageAdapter } from '../StorageAdapter'
 
 export class IndexedDBAdapter implements StorageAdapter {
-  private dbName: string
+  readonly name = 'indexedDB'
+  readonly maxSize = '50MB+'
+  private dbName = 'halcyon-db'
   private storeName = 'halcyon_store'
   private db: IDBDatabase | null = null
-
-  constructor(dbName = 'halcyon-db') {
-    this.dbName = dbName
-  }
 
   private async openDB(): Promise<IDBDatabase> {
     if (this.db) return this.db
@@ -55,148 +53,98 @@ export class IndexedDBAdapter implements StorageAdapter {
   }
 
   async set<T>(key: string, value: T): Promise<void> {
-    try {
-      const db = await this.openDB()
-      return new Promise((resolve, reject) => {
-        const transaction = db.transaction([this.storeName], 'readwrite')
-        const store = transaction.objectStore(this.storeName)
-        const request = store.put(value, key)
+    const db = await this.openDB()
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([this.storeName], 'readwrite')
+      const store = transaction.objectStore(this.storeName)
+      const request = store.put(value, key)
 
-        request.onerror = () => reject(request.error)
-        request.onsuccess = () => resolve()
-      })
-    } catch (error) {
-      console.error('IndexedDBAdapter.set error:', error)
-      throw error
-    }
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve()
+    })
   }
 
   async delete(key: string): Promise<void> {
-    try {
-      const db = await this.openDB()
-      return new Promise((resolve, reject) => {
-        const transaction = db.transaction([this.storeName], 'readwrite')
-        const store = transaction.objectStore(this.storeName)
-        const request = store.delete(key)
+    const db = await this.openDB()
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([this.storeName], 'readwrite')
+      const store = transaction.objectStore(this.storeName)
+      const request = store.delete(key)
 
-        request.onerror = () => reject(request.error)
-        request.onsuccess = () => resolve()
-      })
-    } catch (error) {
-      console.error('IndexedDBAdapter.delete error:', error)
-    }
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve()
+    })
   }
 
   async clear(): Promise<void> {
-    try {
-      const db = await this.openDB()
-      return new Promise((resolve, reject) => {
-        const transaction = db.transaction([this.storeName], 'readwrite')
-        const store = transaction.objectStore(this.storeName)
-        const request = store.clear()
+    const db = await this.openDB()
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([this.storeName], 'readwrite')
+      const store = transaction.objectStore(this.storeName)
+      const request = store.clear()
 
-        request.onerror = () => reject(request.error)
-        request.onsuccess = () => resolve()
-      })
-    } catch (error) {
-      console.error('IndexedDBAdapter.clear error:', error)
-    }
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve()
+    })
   }
 
-  async getAll<T>(prefix: string): Promise<Map<string, T>> {
+  async getAll<T>(prefix?: string): Promise<Map<string, T>> {
     const result = new Map<string, T>()
-    try {
-      const db = await this.openDB()
-      return new Promise((resolve, reject) => {
-        const transaction = db.transaction([this.storeName], 'readonly')
-        const store = transaction.objectStore(this.storeName)
-        const request = store.openCursor()
+    const db = await this.openDB()
 
-        request.onerror = () => reject(request.error)
-        request.onsuccess = (event) => {
-          const cursor = (event.target as IDBRequest).result
-          if (cursor) {
-            const key = cursor.key as string
-            if (key.startsWith(prefix)) {
-              result.set(key, cursor.value as T)
-            }
-            cursor.continue()
-          } else {
-            resolve(result)
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([this.storeName], 'readonly')
+      const store = transaction.objectStore(this.storeName)
+      const request = store.openCursor()
+
+      request.onerror = () => reject(request.error)
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest).result
+        if (cursor) {
+          const key = cursor.key as string
+          if (!prefix || key.startsWith(prefix)) {
+            result.set(key, cursor.value as T)
           }
+          cursor.continue()
+        } else {
+          resolve(result)
         }
-      })
-    } catch (error) {
-      console.error('IndexedDBAdapter.getAll error:', error)
-      return result
-    }
-  }
-
-  async isAvailable(): Promise<boolean> {
-    try {
-      if (!window.indexedDB) return false
-
-      // Test if we can open a database
-      const testDB = await new Promise<boolean>((resolve) => {
-        const request = indexedDB.open('__test__')
-        request.onsuccess = () => {
-          request.result.close()
-          indexedDB.deleteDatabase('__test__')
-          resolve(true)
-        }
-        request.onerror = () => resolve(false)
-      })
-
-      return testDB
-    } catch {
-      return false
-    }
-  }
-
-  async getInfo(): Promise<StorageInfo> {
-    const isAvailable = await this.isAvailable()
-
-    if (!isAvailable) {
-      return {
-        type: 'indexedDB',
-        available: false,
       }
-    }
+    })
+  }
 
-    let itemCount = 0
-    try {
-      const db = await this.openDB()
-      itemCount = await new Promise((resolve, reject) => {
-        const transaction = db.transaction([this.storeName], 'readonly')
-        const store = transaction.objectStore(this.storeName)
-        const request = store.count()
+  async setMany<T>(items: Map<string, T>): Promise<void> {
+    const db = await this.openDB()
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([this.storeName], 'readwrite')
+      const store = transaction.objectStore(this.storeName)
 
-        request.onerror = () => reject(request.error)
-        request.onsuccess = () => resolve(request.result)
-      })
-    } catch (error) {
-      console.error('IndexedDBAdapter.getInfo error:', error)
-    }
+      transaction.onerror = () => reject(transaction.error)
+      transaction.oncomplete = () => resolve()
 
-    // Try to get storage estimate
-    let used: number | undefined
-    let quota: number | undefined
+      for (const [key, value] of items) {
+        store.put(value, key)
+      }
+    })
+  }
+
+  async size(): Promise<number> {
     if (navigator.storage && navigator.storage.estimate) {
-      try {
-        const estimate = await navigator.storage.estimate()
-        used = estimate.usage
-        quota = estimate.quota
-      } catch (error) {
-        console.error('Storage estimate error:', error)
-      }
+      const estimate = await navigator.storage.estimate()
+      return estimate.usage || 0
     }
+    return 0
+  }
 
-    return {
-      type: 'indexedDB',
-      available: true,
-      used,
-      quota,
-      itemCount,
-    }
+  async keys(): Promise<string[]> {
+    const db = await this.openDB()
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([this.storeName], 'readonly')
+      const store = transaction.objectStore(this.storeName)
+      const request = store.getAllKeys()
+
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve(request.result as string[])
+    })
   }
 }

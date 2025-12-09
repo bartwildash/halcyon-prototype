@@ -1,5 +1,6 @@
 // useUndoRedo hook - Keyboard shortcuts and undo/redo logic
 // Cmd/Ctrl+Z to undo, Cmd/Ctrl+Shift+Z to redo
+// Delete/Backspace to delete selected cards
 
 import { useEffect, useCallback } from 'react'
 import { useHistoryStore } from '../stores/historyStore'
@@ -7,7 +8,7 @@ import { useSpatialStore } from '../stores/spatialStore'
 
 export function useUndoRedo() {
   const { undo, redo, canUndo, canRedo } = useHistoryStore()
-  const { updateCard, deleteCard, createCard, space } = useSpatialStore()
+  const { updateCard, deleteCard, createCard, space, selectedCardIds, clearSelection } = useSpatialStore()
 
   // Apply history entry (undo or redo)
   const applyHistoryEntry = useCallback(
@@ -89,32 +90,62 @@ export function useUndoRedo() {
     }
   }, [redo, canRedo, applyHistoryEntry])
 
+  // Delete selected cards handler
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedCardIds.size === 0) return
+
+    // Delete all selected cards
+    const cardIds = Array.from(selectedCardIds)
+    console.log('[Keyboard] Deleting selected cards:', cardIds.length)
+
+    cardIds.forEach((cardId) => {
+      deleteCard(cardId)
+    })
+
+    clearSelection()
+  }, [selectedCardIds, deleteCard, clearSelection])
+
   // Keyboard shortcut listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if we're in an input/textarea/contenteditable
+      const target = e.target as HTMLElement
+      const isEditing =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable ||
+        target.closest('.ProseMirror') // Tiptap editor
+
       // Cmd/Ctrl+Z or Cmd/Ctrl+Shift+Z
       if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
-        e.preventDefault()
-
-        if (e.shiftKey) {
-          // Redo
-          handleRedo()
-        } else {
-          // Undo
-          handleUndo()
+        // Allow undo/redo even while editing (for text undo)
+        // But only handle spatial undo when not editing
+        if (!isEditing) {
+          e.preventDefault()
+          if (e.shiftKey) {
+            handleRedo()
+          } else {
+            handleUndo()
+          }
         }
       }
 
       // Alternative: Cmd/Ctrl+Y for redo (Windows convention)
-      if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'y' && !isEditing) {
         e.preventDefault()
         handleRedo()
+      }
+
+      // Delete/Backspace to delete selected cards (only when not editing)
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditing) {
+        e.preventDefault()
+        handleDeleteSelected()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleUndo, handleRedo])
+  }, [handleUndo, handleRedo, handleDeleteSelected])
 
   return {
     undo: handleUndo,

@@ -1,18 +1,23 @@
 // Halcyon Spatial Workspace
 // Infinite canvas for spatial thinking with entity cards
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { Space } from '../components/spatial/Space'
 import { useSpatialStore } from '../stores/spatialStore'
-import { PrimitivesToggle } from '../components/ui/PrimitivesToggle'
-import type { PrimitiveTool } from '../components/ui/PrimitivesPalette'
-import { MiniAppsPalette, type MiniApp } from '../components/ui/MiniAppsPalette'
+import { ToolButton } from '../components/ui/ToolButton'
 import { LandmarkNavigator } from '../components/ui/LandmarkNavigator'
-import { ControlPanel } from '../components/ui/ControlPanel'
+import { SyncIndicator } from '../components/ui/SyncIndicator'
+import { CommandPalette } from '../components/ui/CommandPalette'
+import { KeyboardGuide } from '../components/ui/KeyboardGuide'
+import { NotificationBell } from '../components/ui/NotificationBell'
 import { GraphView } from '../components/miniapps/GraphView'
 import { Weather } from '../components/miniapps/Weather'
 import { PomodoroTimer } from '../components/gadgets/pomodoro/PomodoroTimer'
 import { FlipClock } from '../components/gadgets/flip-clock/FlipClock'
+import { CrumpitBoard } from '../components/spatial/CrumpitBoard'
+import { PlanBoard } from '../components/spatial/PlanBoard'
+import { useSync } from '../hooks/useSync'
+import { exportSpace, importSpace, pickImportFile } from '../utils/exportImport'
 import '../styles/spatial.css'
 
 // Landmark positions
@@ -23,46 +28,174 @@ const LANDMARKS = [
   { name: 'Meadow', x: -400, y: 500 },
 ]
 
-interface ViewportPosition {
-  x: number
-  y: number
-  zoom: number
-}
+const SPACE_ID = 'demo-space'
+
+type MiniApp = 'graph' | 'weather' | 'timer' | 'clock'
 
 export function SpatialDemo() {
-  const { space, createCard, updateCard, setPan, setZoom, deleteAllCards } = useSpatialStore()
-  const [primitiveTool, setPrimitiveTool] = useState<PrimitiveTool>('hand')
+  const { space, createCard, updateCard, setPan, setZoom, deleteAllCards, toolMode, setToolMode } = useSpatialStore()
   const [openMiniApp, setOpenMiniApp] = useState<MiniApp | null>(null)
   const [instructionsExpanded, setInstructionsExpanded] = useState(false)
   const [showTimer, setShowTimer] = useState(true)
   const [showFlipClock, setShowFlipClock] = useState(true)
+  const [showCrumpit, setShowCrumpit] = useState(false)
+  const [showPlan, setShowPlan] = useState(false)
+  const [showCommandPalette, setShowCommandPalette] = useState(false)
+  const [showKeyboardGuide, setShowKeyboardGuide] = useState(false)
 
-  // Navigation history
-  const [history, setHistory] = useState<ViewportPosition[]>([])
-  const [historyIndex, setHistoryIndex] = useState(-1)
-  const isNavigating = useRef(false)
-  const hasInitialized = useRef(false)
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip if user is typing in an input or textarea
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return
+      }
 
-  // Save current position to history
-  const saveToHistory = () => {
-    if (!space || isNavigating.current) return
+      // Skip if any modal is open (except for Escape)
+      const modalOpen = showCommandPalette || showKeyboardGuide || showCrumpit || showPlan
+      if (modalOpen && e.key !== 'Escape') {
+        return
+      }
 
-    const currentPos: ViewportPosition = {
-      x: space.scrollX,
-      y: space.scrollY,
-      zoom: space.zoom,
+      // Cmd+K or Ctrl+K to open command palette
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowCommandPalette(true)
+        return
+      }
+
+      // Single key shortcuts (only when no modifier keys)
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+
+      switch (e.key.toLowerCase()) {
+        // ? - Show keyboard guide
+        case '?':
+          e.preventDefault()
+          setShowKeyboardGuide(true)
+          break
+
+        // Tool shortcuts
+        case 'h':
+          e.preventDefault()
+          setToolMode('hand')
+          break
+        case 's':
+          e.preventDefault()
+          setToolMode('select')
+          break
+        case 'd':
+          e.preventDefault()
+          setToolMode('draw')
+          break
+
+        // Create shortcuts
+        case 'n':
+          e.preventDefault()
+          if (space) {
+            const x = 200 + Math.random() * 400
+            const y = 200 + Math.random() * 400
+            createCard(x, y, '')
+          }
+          break
+        case 't':
+          e.preventDefault()
+          if (space) {
+            const x = 200 + Math.random() * 400
+            const y = 200 + Math.random() * 400
+            createCard(x, y, '[ ] New task')
+          }
+          break
+
+        // View shortcuts
+        case '1':
+          e.preventDefault()
+          // THINK mode (close modals, stay on canvas)
+          setShowCrumpit(false)
+          setShowPlan(false)
+          break
+        case '2':
+          e.preventDefault()
+          // CRUMPIT mode
+          setShowPlan(false)
+          setShowCrumpit(true)
+          break
+        case '3':
+          e.preventDefault()
+          // PLAN mode
+          setShowCrumpit(false)
+          setShowPlan(true)
+          break
+
+        // Zoom shortcuts
+        case '+':
+        case '=':
+          e.preventDefault()
+          handleZoomIn()
+          break
+        case '-':
+          e.preventDefault()
+          handleZoomOut()
+          break
+        case '0':
+          e.preventDefault()
+          // Reset zoom to 100%
+          if (space) {
+            setZoom(1)
+          }
+          break
+
+        // Escape to close modals
+        case 'escape':
+          if (showKeyboardGuide) {
+            setShowKeyboardGuide(false)
+          } else if (showCommandPalette) {
+            setShowCommandPalette(false)
+          } else if (showCrumpit) {
+            setShowCrumpit(false)
+          } else if (showPlan) {
+            setShowPlan(false)
+          }
+          break
+      }
     }
 
-    // Add to history, removing any forward history
-    setHistory((prev) => [...prev.slice(0, historyIndex + 1), currentPos])
-    setHistoryIndex((prev) => prev + 1)
-  }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [space, showCommandPalette, showKeyboardGuide, showCrumpit, showPlan, setToolMode, createCard, setZoom])
+
+  // Export handler
+  const handleExport = useCallback(() => {
+    if (space) {
+      exportSpace(space)
+    }
+  }, [space])
+
+  // Import handler
+  const handleImport = useCallback(async () => {
+    const file = await pickImportFile()
+    if (!file) return
+
+    try {
+      const importedSpace = await importSpace(file)
+      // Replace current space with imported data
+      // Note: In a full implementation, you'd want to merge or prompt user
+      alert(`Imported space: ${importedSpace.name} with ${importedSpace.cards.length} cards`)
+    } catch (err) {
+      alert(`Import failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+  }, [])
+
+  // Sync with backend
+  const { syncState, forceSync } = useSync(SPACE_ID)
+
+  const isNavigating = useRef(false)
+  const hasInitialized = useRef(false)
 
   // Navigate to landmark with smooth animation
   const handleNavigateToLandmark = (x: number, y: number) => {
     if (!space) return
 
-    saveToHistory()
     isNavigating.current = true
 
     // Target position (centered on screen)
@@ -177,38 +310,6 @@ export function SpatialDemo() {
     setZoom(newZoom)
     setPan(newScrollX, newScrollY)
   }
-
-  // Navigation history controls
-  const handleBack = () => {
-    if (historyIndex <= 0 || !space) return
-
-    const prevPos = history[historyIndex - 1]
-    isNavigating.current = true
-
-    setPan(prevPos.x, prevPos.y)
-    setZoom(prevPos.zoom)
-    setHistoryIndex(historyIndex - 1)
-
-    setTimeout(() => {
-      isNavigating.current = false
-    }, 100)
-  }
-
-  const handleForward = () => {
-    if (historyIndex >= history.length - 1 || !space) return
-
-    const nextPos = history[historyIndex + 1]
-    isNavigating.current = true
-
-    setPan(nextPos.x, nextPos.y)
-    setZoom(nextPos.zoom)
-    setHistoryIndex(historyIndex + 1)
-
-    setTimeout(() => {
-      isNavigating.current = false
-    }, 100)
-  }
-
 
   // Initialize bench demo on first load
   useEffect(() => {
@@ -416,38 +517,10 @@ export function SpatialDemo() {
   return (
     <>
       {/* Main spatial canvas */}
-      <Space spaceId="demo-space" />
+      <Space spaceId={SPACE_ID} />
 
-      {/* Control Panel - left side */}
-      <ControlPanel
-        zoom={space?.zoom || 1}
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onRecenter={handleRecenter}
-        onBack={handleBack}
-        onForward={handleForward}
-        canGoBack={historyIndex > 0}
-        canGoForward={historyIndex < history.length - 1}
-      />
-
-      {/* Primitives Toggle - bottom left */}
-      <div style={{ position: 'fixed', bottom: 20, left: 20, zIndex: 1500 }}>
-        <PrimitivesToggle
-          activeTool={primitiveTool}
-          onToolSelect={(tool) => {
-            setPrimitiveTool(tool)
-            // Future: Map tools to canvas actions
-            // e.g., 'circle' -> create circular card/connection
-          }}
-        />
-      </div>
-
-      {/* MiniApps Palette - bottom left (above primitives) */}
-      <div style={{ position: 'fixed', bottom: 80, left: 20, zIndex: 1500 }}>
-        <MiniAppsPalette
-          onAppLaunch={(app) => setOpenMiniApp(app)}
-        />
-      </div>
+      {/* Floating Tool Button - tap to open, hold to move */}
+      <ToolButton onRecenter={handleRecenter} />
 
       {/* MiniApp windows */}
       {openMiniApp === 'graph' && (
@@ -475,8 +548,56 @@ export function SpatialDemo() {
         <LandmarkNavigator onNavigate={handleNavigateToLandmark} />
       </div>
 
-      {/* Clear All Button - top right */}
-      <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 1500 }}>
+      {/* Sync indicator and buttons - top right */}
+      <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 1500, display: 'flex', gap: 12, alignItems: 'center' }}>
+        <NotificationBell />
+        <button
+          onClick={() => setShowKeyboardGuide(true)}
+          className="button"
+          style={{ fontSize: 14, fontWeight: 600, background: '#6b7280', color: 'white', minWidth: 32 }}
+          title="Keyboard shortcuts (?)"
+        >
+          ?
+        </button>
+        <SyncIndicator
+          isSyncing={syncState.isSyncing}
+          isOnline={syncState.isOnline}
+          lastSyncAt={syncState.lastSyncAt}
+          error={syncState.syncError}
+          onForceSync={forceSync}
+        />
+        <button
+          onClick={() => setShowPlan(true)}
+          className="button"
+          style={{ fontSize: 14, fontWeight: 600, background: '#22c55e', color: 'white' }}
+          title="Open Plan - today view"
+        >
+          Plan
+        </button>
+        <button
+          onClick={() => setShowCrumpit(true)}
+          className="button"
+          style={{ fontSize: 14, fontWeight: 600, background: '#000', color: 'white' }}
+          title="Open Crumpit task triage board"
+        >
+          Crumpit
+        </button>
+        <button
+          onClick={handleExport}
+          className="button"
+          style={{ fontSize: 14, fontWeight: 600, background: '#3b82f6', color: 'white' }}
+          title="Export space to JSON"
+        >
+          Export
+        </button>
+        <button
+          onClick={handleImport}
+          className="button"
+          style={{ fontSize: 14, fontWeight: 600, background: '#8b5cf6', color: 'white' }}
+          title="Import space from JSON"
+        >
+          Import
+        </button>
         <button
           onClick={() => {
             if (confirm('Delete all cards? This cannot be undone.')) {
@@ -486,9 +607,32 @@ export function SpatialDemo() {
           className="button"
           style={{ fontSize: 14, fontWeight: 600, background: '#ff4444', color: 'white' }}
         >
-          Clear All Cards
+          Clear All
         </button>
       </div>
+
+      {/* Crumpit Board modal */}
+      {showCrumpit && (
+        <CrumpitBoard onClose={() => setShowCrumpit(false)} />
+      )}
+
+      {/* Plan Board modal */}
+      {showPlan && (
+        <PlanBoard onClose={() => setShowPlan(false)} />
+      )}
+
+      {/* Command Palette */}
+      <CommandPalette
+        isOpen={showCommandPalette}
+        onClose={() => setShowCommandPalette(false)}
+        onShowCrumpit={() => setShowCrumpit(true)}
+        onShowPlan={() => setShowPlan(true)}
+      />
+
+      {/* Keyboard Guide */}
+      {showKeyboardGuide && (
+        <KeyboardGuide onClose={() => setShowKeyboardGuide(false)} />
+      )}
 
       {/* Instructions overlay - Kinopio style */}
       <div
@@ -559,22 +703,26 @@ export function SpatialDemo() {
             </div>
 
             <p style={{ margin: '12px 0 8px 0', fontSize: '14px', color: 'var(--primary)' }}>
-              <strong>Controls</strong>
+              <strong>Tools (left toolbar)</strong>
             </p>
             <p style={{ margin: '0 0 6px 0' }}>
-              <strong style={{ color: 'var(--primary)' }}>Click</strong> empty space → Create card
+              <strong style={{ color: 'var(--primary)' }}>✋ Hand</strong> → Drag to pan canvas
+            </p>
+            <p style={{ margin: '0 0 6px 0' }}>
+              <strong style={{ color: 'var(--primary)' }}>⬚ Select</strong> → Drag to select cards
+            </p>
+
+            <p style={{ margin: '12px 0 8px 0', fontSize: '14px', color: 'var(--primary)' }}>
+              <strong>Controls</strong>
             </p>
             <p style={{ margin: '0 0 6px 0' }}>
               <strong style={{ color: 'var(--primary)' }}>Drag</strong> card → Move it
             </p>
             <p style={{ margin: '0 0 6px 0' }}>
-              <strong style={{ color: 'var(--primary)' }}>Double-click</strong> → Edit text
+              <strong style={{ color: 'var(--primary)' }}>Double-click</strong> card → Edit text
             </p>
             <p style={{ margin: '0 0 6px 0' }}>
-              <strong style={{ color: 'var(--primary)' }}>Scroll</strong> → Zoom
-            </p>
-            <p style={{ margin: '0 0 6px 0' }}>
-              <strong style={{ color: 'var(--primary)' }}>Drag background</strong> → Pan
+              <strong style={{ color: 'var(--primary)' }}>Scroll/Pinch</strong> → Zoom
             </p>
             <p style={{ margin: '0 0 6px 0' }}>
               <strong style={{ color: 'var(--primary)' }}>Escape</strong> → Clear selection
@@ -583,7 +731,7 @@ export function SpatialDemo() {
               className="badge info"
               style={{ marginTop: 12, fontSize: 11, display: 'inline-block' }}
             >
-              Auto-saves to IndexedDB
+              Auto-saves locally + syncs to server
             </div>
           </div>
         )}

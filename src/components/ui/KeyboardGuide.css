@@ -48,11 +48,35 @@
   }
 }
 
+.keyboard-guide-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
 .keyboard-guide h2 {
-  margin: 0 0 1.5rem 0;
+  margin: 0;
   font-size: 2rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+.keyboard-guide-close-btn {
+  background: none;
+  border: 2px solid #000;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.keyboard-guide-close-btn:hover {
+  background: #f0f0f0;
 }
 
 .keyboard-sections {

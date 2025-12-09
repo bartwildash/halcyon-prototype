@@ -1,7 +1,7 @@
 // Space Component - The infinite canvas container
 // This is NOT an HTML5 canvas - it's a DOM-based infinite canvas with CSS transforms
 
-import { useRef, useEffect, useCallback, useMemo } from 'react'
+import { useRef, useEffect, useMemo, useCallback, useState } from 'react'
 import { useSpatialStore } from '../../stores/spatialStore'
 import { usePanZoom } from '../../hooks/usePanZoom'
 import { useUndoRedo } from '../../hooks/useUndoRedo'
@@ -10,7 +10,10 @@ import { ConnectionsLayer } from './ConnectionsLayer'
 import { SelectionCanvas } from './SelectionCanvas'
 import { BoxFrame } from './BoxFrame'
 import { BenchBackground, type BenchMode } from './BenchBackground'
-import { screenToCanvas, isCardInViewport } from '../../utils/geometry'
+import { InkCanvas } from './InkCanvas'
+import { CardContextMenu } from '../ui/CardContextMenu'
+import { isCardInViewport } from '../../utils/geometry'
+import type { InkStroke } from '../../types/spatial'
 
 interface SpaceProps {
   spaceId: string
@@ -21,7 +24,27 @@ interface SpaceProps {
 export function Space({ spaceId, backgroundMode = 'osb' }: SpaceProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
-  const { space, loadSpace, createCard, clearSelection } = useSpatialStore()
+  const { space, loadSpace, clearSelection, toolMode, setInkStrokes } = useSpatialStore()
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean
+    position: { x: number; y: number }
+    cardId: string
+  }>({
+    isOpen: false,
+    position: { x: 0, y: 0 },
+    cardId: '',
+  })
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(prev => ({ ...prev, isOpen: false }))
+  }, [])
+
+  // Ink strokes handler
+  const handleStrokesChange = useCallback((strokes: InkStroke[]) => {
+    setInkStrokes(strokes)
+  }, [setInkStrokes])
 
   // Initialize pan/zoom (casting containerRef to RefObject<HTMLElement>)
   const { zoom, scrollX, scrollY } = usePanZoom(containerRef as React.RefObject<HTMLElement>)
@@ -33,29 +56,6 @@ export function Space({ spaceId, backgroundMode = 'osb' }: SpaceProps) {
   useEffect(() => {
     loadSpace(spaceId)
   }, [spaceId, loadSpace])
-
-  // Handle click on empty space to create new card
-  const handleCanvasClick = useCallback(
-    (e: React.MouseEvent) => {
-      // Only create card if clicking directly on canvas (not on a card)
-      if (e.target !== canvasRef.current) return
-
-      const rect = containerRef.current?.getBoundingClientRect()
-      if (!rect) return
-
-      // Convert screen coordinates to canvas coordinates
-      const canvasPos = screenToCanvas(
-        e.clientX - rect.left,
-        e.clientY - rect.top,
-        zoom,
-        scrollX,
-        scrollY
-      )
-
-      createCard(canvasPos.x, canvasPos.y, '')
-    },
-    [zoom, scrollX, scrollY, createCard]
-  )
 
   // Viewport culling - only render visible cards for performance
   const visibleCards = useMemo(() => {
@@ -74,12 +74,30 @@ export function Space({ spaceId, backgroundMode = 'osb' }: SpaceProps) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         clearSelection()
+        closeContextMenu()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [clearSelection])
+  }, [clearSelection, closeContextMenu])
+
+  // Handle right-click on cards
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    // Find the card element
+    const cardElement = (e.target as HTMLElement).closest('[data-card-id]')
+    if (cardElement) {
+      e.preventDefault()
+      const cardId = cardElement.getAttribute('data-card-id')
+      if (cardId) {
+        setContextMenu({
+          isOpen: true,
+          position: { x: e.clientX, y: e.clientY },
+          cardId,
+        })
+      }
+    }
+  }, [])
 
   if (!space) {
     return (
@@ -110,6 +128,7 @@ export function Space({ spaceId, backgroundMode = 'osb' }: SpaceProps) {
         overflow: 'hidden',
         touchAction: 'none',
       }}
+      onContextMenu={handleContextMenu}
     >
       {/* Bench background texture - warm OSB chipboard feel */}
       <BenchBackground mode={backgroundMode} zoom={zoom} />
@@ -117,7 +136,6 @@ export function Space({ spaceId, backgroundMode = 'osb' }: SpaceProps) {
       <div
         ref={canvasRef}
         className="space-canvas"
-        onClick={handleCanvasClick}
         style={{
           position: 'absolute',
           width: 10000,
@@ -147,6 +165,16 @@ export function Space({ spaceId, backgroundMode = 'osb' }: SpaceProps) {
         scrollX={scrollX}
         scrollY={scrollY}
         containerRef={containerRef}
+      />
+
+      {/* Ink/Drawing layer overlay */}
+      <InkCanvas
+        strokes={space.inkStrokes || []}
+        onStrokesChange={handleStrokesChange}
+        isDrawingMode={toolMode === 'draw'}
+        zoom={zoom}
+        scrollX={scrollX}
+        scrollY={scrollY}
       />
 
       {/* Performance indicators */}
@@ -195,6 +223,14 @@ export function Space({ spaceId, backgroundMode = 'osb' }: SpaceProps) {
           </div>
         )}
       </div>
+
+      {/* Card context menu (right-click) */}
+      <CardContextMenu
+        isOpen={contextMenu.isOpen}
+        position={contextMenu.position}
+        cardId={contextMenu.cardId}
+        onClose={closeContextMenu}
+      />
     </div>
   )
 }

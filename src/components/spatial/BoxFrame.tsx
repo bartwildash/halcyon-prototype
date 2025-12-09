@@ -132,6 +132,7 @@ function BoxFrameComponent({ box }: BoxFrameProps) {
       data-box-id={box.id}
       style={{
         position: 'absolute',
+        touchAction: 'none', // Critical: prevent browser touch handling
         left: box.x,
         top: box.y,
         width: box.width,
@@ -198,6 +199,7 @@ function BoxFrameComponent({ box }: BoxFrameProps) {
         onPointerUp={handleResizeEnd}
         style={{
           position: 'absolute',
+          touchAction: 'none', // Critical: prevent browser touch handling
           right: -8,
           bottom: -8,
           width: 24,

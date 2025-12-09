@@ -2,76 +2,84 @@
  * StorageSettings Component
  *
  * Allows users to choose storage backend and view storage info.
- * Monochrome-first design with heavy borders.
  */
 
 import { useState, useEffect } from 'react'
-import { useHalcyonStore } from '../../store/halcyonStore'
-import type { StorageAdapterType, StorageInfo } from '../../storage/adapters'
+import {
+  getStoragePreference,
+  setStoragePreference,
+  getStorageInfo,
+  createStorage,
+  migrateStorage,
+  getDefaultStorage,
+  setDefaultStorage,
+  type StorageType,
+} from '../../storage'
 import './StorageSettings.css'
 
 export function StorageSettings() {
-  const { storageConfig, setStorageAdapter, getStorageInfo } = useHalcyonStore()
   const [isOpen, setIsOpen] = useState(false)
-  const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null)
-  const [isSwitching, setIsSwitching] = useState(false)
+  const [currentType, setCurrentType] = useState<StorageType>(getStoragePreference())
+  const [storageSize, setStorageSize] = useState<number>(0)
+  const [isMigrating, setIsMigrating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Load storage info on mount
+  // Load storage size on mount
   useEffect(() => {
-    loadStorageInfo()
-  }, [storageConfig.adapter])
+    loadStorageSize()
+  }, [currentType])
 
-  const loadStorageInfo = async () => {
+  const loadStorageSize = async () => {
     try {
-      const info = await getStorageInfo()
-      setStorageInfo(info)
+      const storage = getDefaultStorage()
+      const size = await storage.size()
+      setStorageSize(size)
     } catch (err) {
-      console.error('Failed to load storage info:', err)
+      console.error('Failed to load storage size:', err)
     }
   }
 
-  const handleSwitchAdapter = async (adapter: StorageAdapterType) => {
-    if (adapter === storageConfig.adapter) return
+  const handleSwitchStorage = async (newType: StorageType) => {
+    if (newType === currentType) return
 
-    setIsSwitching(true)
+    setIsMigrating(true)
     setError(null)
 
     try {
-      await setStorageAdapter({
-        ...storageConfig,
-        adapter,
-      })
-      await loadStorageInfo()
+      const oldStorage = getDefaultStorage()
+      const newStorage = createStorage(newType)
+
+      // Migrate data
+      const result = await migrateStorage(oldStorage, newStorage)
+      if (!result.success) {
+        throw new Error(result.error || 'Migration failed')
+      }
+
+      // Update preference and default storage
+      setStoragePreference(newType)
+      setDefaultStorage(newStorage)
+      setCurrentType(newType)
+
+      // Reload to apply changes
+      if (result.itemCount > 0) {
+        window.location.reload()
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to switch storage')
-      console.error('Storage switch error:', err)
     } finally {
-      setIsSwitching(false)
+      setIsMigrating(false)
     }
   }
 
-  const formatBytes = (bytes?: number) => {
-    if (bytes === undefined) return 'Unknown'
+  const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B'
     const k = 1024
     const sizes = ['B', 'KB', 'MB', 'GB']
     const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
   }
 
-  const getAdapterDescription = (adapter: StorageAdapterType) => {
-    switch (adapter) {
-      case 'localStorage':
-        return '~5MB limit, simple, always available'
-      case 'indexedDB':
-        return '50MB-1GB+, structured, local-first'
-      case 'cloudflare':
-        return 'Unlimited, cloud sync, multi-device'
-      default:
-        return ''
-    }
-  }
+  const storageOptions: StorageType[] = ['localStorage', 'indexedDB', 'cloudflare']
 
   return (
     <div className="storage-settings">
@@ -86,86 +94,51 @@ export function StorageSettings() {
       {isOpen && (
         <div className="storage-settings-panel">
           <div className="storage-settings-header">
-            <h3>Storage</h3>
-            <button
-              className="storage-settings-close"
-              onClick={() => setIsOpen(false)}
-            >
-              ×
+            <h3>Storage Location</h3>
+            <button className="storage-settings-close" onClick={() => setIsOpen(false)}>
+              x
             </button>
           </div>
 
-          {error && (
-            <div className="storage-error">
-              ⚠ {error}
-            </div>
-          )}
+          {error && <div className="storage-error">{error}</div>}
 
           <div className="storage-adapters">
-            {(['localStorage', 'indexedDB', 'cloudflare'] as StorageAdapterType[]).map((adapter) => (
-              <button
-                key={adapter}
-                className={`storage-adapter ${
-                  storageConfig.adapter === adapter ? 'active' : ''
-                } ${isSwitching ? 'disabled' : ''}`}
-                onClick={() => handleSwitchAdapter(adapter)}
-                disabled={isSwitching}
-              >
-                <div className="adapter-name">
-                  {adapter === 'localStorage' && '📦'}
-                  {adapter === 'indexedDB' && '🗄️'}
-                  {adapter === 'cloudflare' && '☁️'}
-                  {' '}
-                  {adapter}
-                </div>
-                <div className="adapter-description">
-                  {getAdapterDescription(adapter)}
-                </div>
-                {storageConfig.adapter === adapter && (
-                  <div className="adapter-active-indicator">✓</div>
-                )}
-              </button>
-            ))}
+            {storageOptions.map((type) => {
+              const info = getStorageInfo(type)
+              return (
+                <button
+                  key={type}
+                  className={`storage-adapter ${currentType === type ? 'active' : ''} ${isMigrating ? 'disabled' : ''}`}
+                  onClick={() => handleSwitchStorage(type)}
+                  disabled={isMigrating}
+                >
+                  <div className="adapter-name">
+                    {type === 'localStorage' && '📦 '}
+                    {type === 'indexedDB' && '🗄️ '}
+                    {type === 'cloudflare' && '☁️ '}
+                    {info.name}
+                  </div>
+                  <div className="adapter-description">{info.description}</div>
+                  <div className="adapter-size">{info.maxSize}</div>
+                  {currentType === type && <div className="adapter-active-indicator">✓</div>}
+                </button>
+              )
+            })}
           </div>
 
-          {storageInfo && (
-            <div className="storage-info">
-              <h4>Current Storage</h4>
-              <div className="storage-info-grid">
-                <div className="storage-info-item">
-                  <span className="label">Type:</span>
-                  <span className="value">{storageInfo.type}</span>
-                </div>
-                <div className="storage-info-item">
-                  <span className="label">Status:</span>
-                  <span className="value">
-                    {storageInfo.available ? '✓ Available' : '✗ Unavailable'}
-                  </span>
-                </div>
-                {storageInfo.itemCount !== undefined && (
-                  <div className="storage-info-item">
-                    <span className="label">Items:</span>
-                    <span className="value">{storageInfo.itemCount}</span>
-                  </div>
-                )}
-                {storageInfo.used !== undefined && (
-                  <div className="storage-info-item">
-                    <span className="label">Used:</span>
-                    <span className="value">{formatBytes(storageInfo.used)}</span>
-                  </div>
-                )}
-                {storageInfo.quota !== undefined && (
-                  <div className="storage-info-item">
-                    <span className="label">Quota:</span>
-                    <span className="value">{formatBytes(storageInfo.quota)}</span>
-                  </div>
-                )}
-              </div>
+          <div className="storage-info">
+            <div className="storage-info-item">
+              <span className="label">Current size:</span>
+              <span className="value">{formatBytes(storageSize)}</span>
             </div>
+          </div>
+
+          {isMigrating && (
+            <div className="storage-migrating">Migrating data...</div>
           )}
 
           <div className="storage-footer">
-            <p>All data stays on your device unless you enable cloud sync.</p>
+            <p>Data stays local unless you enable cloud sync.</p>
           </div>
         </div>
       )}

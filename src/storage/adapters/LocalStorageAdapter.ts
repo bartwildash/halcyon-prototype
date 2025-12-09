@@ -5,9 +5,11 @@
  * Best for: Small datasets, simple persistence, maximum compatibility.
  */
 
-import type { StorageAdapter, StorageInfo } from './types'
+import type { StorageAdapter } from '../StorageAdapter'
 
 export class LocalStorageAdapter implements StorageAdapter {
+  readonly name = 'localStorage'
+  readonly maxSize = '5-10MB'
   private prefix = 'halcyon:'
 
   async get<T>(key: string): Promise<T | null> {
@@ -31,88 +33,58 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
 
   async delete(key: string): Promise<void> {
-    try {
-      localStorage.removeItem(this.prefix + key)
-    } catch (error) {
-      console.error('LocalStorageAdapter.delete error:', error)
-    }
+    localStorage.removeItem(this.prefix + key)
   }
 
   async clear(): Promise<void> {
-    try {
-      const keys = Object.keys(localStorage)
-      for (const key of keys) {
-        if (key.startsWith(this.prefix)) {
-          localStorage.removeItem(key)
-        }
+    const keys = Object.keys(localStorage)
+    for (const key of keys) {
+      if (key.startsWith(this.prefix)) {
+        localStorage.removeItem(key)
       }
-    } catch (error) {
-      console.error('LocalStorageAdapter.clear error:', error)
     }
   }
 
-  async getAll<T>(prefix: string): Promise<Map<string, T>> {
+  async getAll<T>(prefix?: string): Promise<Map<string, T>> {
     const result = new Map<string, T>()
-    try {
-      const fullPrefix = this.prefix + prefix
-      const keys = Object.keys(localStorage)
+    const fullPrefix = this.prefix + (prefix || '')
+    const keys = Object.keys(localStorage)
 
-      for (const key of keys) {
-        if (key.startsWith(fullPrefix)) {
-          const item = localStorage.getItem(key)
-          if (item) {
-            const cleanKey = key.replace(this.prefix, '')
-            result.set(cleanKey, JSON.parse(item) as T)
-          }
+    for (const key of keys) {
+      if (key.startsWith(fullPrefix)) {
+        const item = localStorage.getItem(key)
+        if (item) {
+          const cleanKey = key.replace(this.prefix, '')
+          result.set(cleanKey, JSON.parse(item) as T)
         }
       }
-    } catch (error) {
-      console.error('LocalStorageAdapter.getAll error:', error)
     }
     return result
   }
 
-  async isAvailable(): Promise<boolean> {
-    try {
-      const testKey = this.prefix + '__test__'
-      localStorage.setItem(testKey, 'test')
-      localStorage.removeItem(testKey)
-      return true
-    } catch {
-      return false
+  async setMany<T>(items: Map<string, T>): Promise<void> {
+    for (const [key, value] of items) {
+      await this.set(key, value)
     }
   }
 
-  async getInfo(): Promise<StorageInfo> {
-    const isAvailable = await this.isAvailable()
-
-    if (!isAvailable) {
-      return {
-        type: 'localStorage',
-        available: false,
-      }
-    }
-
-    // Estimate used storage
-    let used = 0
+  async size(): Promise<number> {
+    let total = 0
     const keys = Object.keys(localStorage)
     for (const key of keys) {
       if (key.startsWith(this.prefix)) {
         const item = localStorage.getItem(key)
         if (item) {
-          used += item.length * 2 // UTF-16 = 2 bytes per char
+          total += item.length * 2 // UTF-16 = 2 bytes per char
         }
       }
     }
+    return total
+  }
 
-    const itemCount = keys.filter(k => k.startsWith(this.prefix)).length
-
-    return {
-      type: 'localStorage',
-      available: true,
-      used,
-      quota: 5 * 1024 * 1024, // ~5MB typical limit
-      itemCount,
-    }
+  async keys(): Promise<string[]> {
+    return Object.keys(localStorage)
+      .filter(k => k.startsWith(this.prefix))
+      .map(k => k.replace(this.prefix, ''))
   }
 }

@@ -16,7 +16,7 @@ interface PomodoroTimerProps {
   onClose?: () => void
 }
 
-type TimerMode = 'work' | 'break' | 'stopped'
+type TimerMode = 'work' | 'break' | 'paused' | 'stopped'
 type VisualTheme = 'light' | 'dark'
 
 export function PomodoroTimer({ onClose }: PomodoroTimerProps) {
@@ -31,75 +31,106 @@ export function PomodoroTimer({ onClose }: PomodoroTimerProps) {
   const dragStart = useRef({ x: 0, y: 0, startX: 0, startY: 0 })
   const timerRef = useRef<number | undefined>(undefined)
   const lastClickTime = useRef(0)
+  // Track start time for drift-free timing
+  const timerStartTime = useRef<number>(0)
+  const timerStartRemaining = useRef<number>(0)
 
   // Play a pleasant chirp sound using Web Audio API
+  // Plays 3 chirps for better notification
   const playChirp = useCallback(() => {
     if (!soundEnabled) return
 
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
 
-      // Create oscillator for a pleasant two-tone chirp
-      const oscillator = audioContext.createOscillator()
-      const gainNode = audioContext.createGain()
+      // Play 3 chirps with delay between them
+      const playTone = (startTime: number) => {
+        const oscillator = audioContext.createOscillator()
+        const gainNode = audioContext.createGain()
 
-      oscillator.connect(gainNode)
-      gainNode.connect(audioContext.destination)
+        oscillator.connect(gainNode)
+        gainNode.connect(audioContext.destination)
 
-      // First tone: 800Hz
-      oscillator.frequency.setValueAtTime(800, audioContext.currentTime)
-      // Second tone: 1000Hz (higher pitch)
-      oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1)
+        // Two-tone chirp: 800Hz then 1000Hz
+        oscillator.frequency.setValueAtTime(800, startTime)
+        oscillator.frequency.setValueAtTime(1000, startTime + 0.1)
 
-      // Envelope: quick fade in, sustain, fade out
-      gainNode.gain.setValueAtTime(0, audioContext.currentTime)
-      gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05)
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime + 0.15)
-      gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.25)
+        // Envelope: quick fade in, sustain, fade out
+        gainNode.gain.setValueAtTime(0, startTime)
+        gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.05)
+        gainNode.gain.setValueAtTime(0.3, startTime + 0.15)
+        gainNode.gain.linearRampToValueAtTime(0, startTime + 0.25)
 
-      oscillator.start(audioContext.currentTime)
-      oscillator.stop(audioContext.currentTime + 0.25)
+        oscillator.start(startTime)
+        oscillator.stop(startTime + 0.25)
+      }
+
+      // Play 3 chirps with 400ms gaps
+      const now = audioContext.currentTime
+      playTone(now)
+      playTone(now + 0.4)
+      playTone(now + 0.8)
     } catch (error) {
       console.warn('Could not play sound:', error)
     }
   }, [soundEnabled])
 
-  // Timer logic
+  // Timer logic - uses wall-clock time to prevent drift
   useEffect(() => {
-    if (mode === 'stopped') {
+    // Only run timer when in work or break mode
+    if (mode === 'stopped' || mode === 'paused') {
       if (timerRef.current !== undefined) {
         clearInterval(timerRef.current)
+        timerRef.current = undefined
       }
       return
     }
 
-    timerRef.current = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          // Play chirp sound when timer completes
-          playChirp()
+    // Record when we started this timer session
+    timerStartTime.current = Date.now()
+    timerStartRemaining.current = timeRemaining
 
-          // Switch modes
+    // Update every 100ms for smooth display, calculate from wall clock
+    timerRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - timerStartTime.current) / 1000)
+      const newRemaining = Math.max(0, timerStartRemaining.current - elapsed)
+
+      setTimeRemaining(newRemaining)
+
+      if (newRemaining <= 0) {
+        // Clear interval before playing sound to prevent multiple triggers
+        if (timerRef.current !== undefined) {
+          clearInterval(timerRef.current)
+          timerRef.current = undefined
+        }
+
+        // Play chirp sound when timer completes
+        playChirp()
+
+        // Switch modes after a brief delay
+        setTimeout(() => {
           if (mode === 'work') {
             setMode('break')
             setTotalTime(5 * 60)
-            return 5 * 60
+            setTimeRemaining(5 * 60)
           } else {
             setMode('work')
             setTotalTime(25 * 60)
-            return 25 * 60
+            setTimeRemaining(25 * 60)
           }
-        }
-        return prev - 1
-      })
-    }, 1000) as unknown as number
+        }, 100)
+      }
+    }, 100) as unknown as number
 
     return () => {
       if (timerRef.current !== undefined) {
         clearInterval(timerRef.current)
+        timerRef.current = undefined
       }
     }
-  }, [mode])
+    // Note: We intentionally capture timeRemaining at effect start via ref
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, playChirp])
 
   // Theme-specific styling (merged classic+soft into light, added dark)
   const getThemeColors = () => {
@@ -129,22 +160,38 @@ export function PomodoroTimer({ onClose }: PomodoroTimerProps) {
 
   const themeColors = getThemeColors()
 
-  // Dragging logic
+  // Dragging logic - use native touch events for reliable touch dragging
+  const containerRef = useRef<HTMLDivElement>(null)
+  const pointerIdRef = useRef<number | null>(null)
+
   const handlePointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button')) return
     if ((e.target as HTMLElement).closest('.settings-panel')) return
+
+    // Prevent default to stop browser touch handling
+    e.preventDefault()
+
     setIsDragging(true)
+    pointerIdRef.current = e.pointerId
     dragStart.current = {
       x: e.clientX,
       y: e.clientY,
       startX: position.x,
       startY: position.y,
     }
-    e.currentTarget.setPointerCapture(e.pointerId)
+
+    // Use setPointerCapture for reliable tracking
+    if (containerRef.current) {
+      containerRef.current.setPointerCapture(e.pointerId)
+    }
   }
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging) return
+    if (!isDragging || e.pointerId !== pointerIdRef.current) return
+
+    // Prevent default to avoid scroll interference
+    e.preventDefault()
+
     const dx = e.clientX - dragStart.current.x
     const dy = e.clientY - dragStart.current.y
     setPosition({
@@ -154,26 +201,49 @@ export function PomodoroTimer({ onClose }: PomodoroTimerProps) {
   }
 
   const handlePointerUp = (e: React.PointerEvent) => {
+    if (e.pointerId !== pointerIdRef.current) return
+
     setIsDragging(false)
-    e.currentTarget.releasePointerCapture(e.pointerId)
+    pointerIdRef.current = null
+
+    if (containerRef.current) {
+      try {
+        containerRef.current.releasePointerCapture(e.pointerId)
+      } catch {
+        // Ignore errors if capture already released
+      }
+    }
   }
+
+  const handlePointerCancel = (e: React.PointerEvent) => {
+    if (e.pointerId !== pointerIdRef.current) return
+    setIsDragging(false)
+    pointerIdRef.current = null
+  }
+
+  // Track which mode we were in before pausing
+  const pausedFromMode = useRef<'work' | 'break'>('work')
 
   // Start/pause timer
   const toggleTimer = () => {
     if (mode === 'stopped') {
+      // Fresh start
       setMode('work')
-      setTimeRemaining(25 * 60)
-      setTotalTime(25 * 60)
+      setTimeRemaining(totalTime)
+    } else if (mode === 'paused') {
+      // Resume from pause
+      setMode(pausedFromMode.current)
     } else {
-      setMode('stopped')
+      // Pause (from work or break)
+      pausedFromMode.current = mode as 'work' | 'break'
+      setMode('paused')
     }
   }
 
   // Reset timer
   const resetTimer = () => {
     setMode('stopped')
-    setTimeRemaining(25 * 60)
-    setTotalTime(25 * 60)
+    setTimeRemaining(totalTime)
   }
 
   // Calculate rotation angle for red disc
@@ -192,6 +262,7 @@ export function PomodoroTimer({ onClose }: PomodoroTimerProps) {
 
   return (
     <div
+      ref={containerRef}
       style={{
         position: 'fixed',
         left: position.x,
@@ -199,12 +270,15 @@ export function PomodoroTimer({ onClose }: PomodoroTimerProps) {
         zIndex: 2000,
         cursor: isDragging ? 'grabbing' : 'grab',
         userSelect: 'none',
+        touchAction: 'none', // Critical: prevent browser touch handling for smooth drag
         filter: 'drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3))',
         perspective: '1000px',
       }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onPointerLeave={handlePointerUp}
     >
       {/* Flip container with 3D transform */}
       <div
@@ -455,17 +529,43 @@ export function PomodoroTimer({ onClose }: PomodoroTimerProps) {
               }}
             />
 
-            {/* Center hub - dark circle (rendered last so it's on top) */}
+            {/* Center hub - dark circle */}
             <circle
               cx="150"
               cy="150"
               r="12"
-              fill="radial-gradient(circle, #3a3a3a 0%, #1a1a1a 100%)"
+              fill={visualTheme === 'dark' ? '#1a1a1a' : '#2a2a2a'}
               style={{
                 filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4))',
               }}
             />
+
+            {/* Paused indicator - pulsing ring */}
+            {mode === 'paused' && (
+              <circle
+                cx="150"
+                cy="150"
+                r="18"
+                fill="none"
+                stroke="#fbbf24"
+                strokeWidth="3"
+                opacity="0.8"
+                style={{
+                  animation: 'pulse 1.5s ease-in-out infinite',
+                }}
+              />
+            )}
           </svg>
+
+          {/* CSS for pause animation */}
+          {mode === 'paused' && (
+            <style>{`
+              @keyframes pulse {
+                0%, 100% { opacity: 0.4; }
+                50% { opacity: 1; }
+              }
+            `}</style>
+          )}
           </div>
         </div>
 
@@ -732,111 +832,6 @@ export function PomodoroTimer({ onClose }: PomodoroTimerProps) {
       </div>
       {/* End flip container */}
 
-      {/* Old settings panel - now unused */}
-      {false && (
-        <div
-          className="settings-panel"
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            position: 'absolute',
-            top: 40,
-            right: -12,
-            background: 'rgba(255, 255, 255, 0.98)',
-            border: '2px solid #111',
-            borderRadius: 12,
-            padding: 16,
-            boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-            minWidth: 200,
-            fontFamily: 'system-ui',
-            zIndex: 2002,
-          }}
-          >
-            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: '#111' }}>
-              Timer Settings
-            </div>
-
-            {/* Sound toggle */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: 12,
-                padding: '8px 0',
-              }}
-            >
-              <span style={{ fontSize: 13, color: '#333' }}>Sound Alert</span>
-              <button
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                style={{
-                  width: 48,
-                  height: 26,
-                  background: soundEnabled ? '#4CAF50' : '#ccc',
-                  border: '2px solid #111',
-                  borderRadius: 13,
-                  cursor: 'pointer',
-                  position: 'relative',
-                  transition: 'background 0.3s',
-                }}
-              >
-                <div
-                  style={{
-                    width: 18,
-                    height: 18,
-                    background: 'white',
-                    borderRadius: '50%',
-                    position: 'absolute',
-                    top: 2,
-                    left: soundEnabled ? 24 : 2,
-                    transition: 'left 0.3s',
-                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)',
-                  }}
-                />
-              </button>
-            </div>
-
-            {/* Divider */}
-            <div style={{ height: 1, background: 'rgba(0, 0, 0, 0.1)', margin: '8px 0' }} />
-
-            {/* Visual theme selector */}
-            <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 13, color: '#333', marginBottom: 8 }}>Visual Theme</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {(['light', 'dark'] as VisualTheme[]).map((theme) => (
-                  <button
-                    key={theme}
-                    onClick={() => setVisualTheme(theme)}
-                    style={{
-                      padding: '8px 12px',
-                      background: visualTheme === theme ? '#E8EEF2' : 'transparent',
-                      border: visualTheme === theme ? '2px solid #111' : '2px solid transparent',
-                      borderRadius: 6,
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      fontWeight: visualTheme === theme ? 600 : 400,
-                      textAlign: 'left',
-                      color: '#111',
-                      transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (visualTheme !== theme) {
-                        e.currentTarget.style.background = 'rgba(0, 0, 0, 0.05)'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (visualTheme !== theme) {
-                        e.currentTarget.style.background = 'transparent'
-                      }
-                    }}
-                  >
-                    {theme === 'light' && '☀️ Light'}
-                    {theme === 'dark' && '🌙 Dark'}
-                  </button>
-                ))}
-              </div>
-            </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -427,7 +427,14 @@ function SpatialCardComponent({ card }: SpatialCardProps) {
 
       {/* Connection handle - only show for non-sticker cards on hover/select and if can edit */}
       {!isSticker && !isLocked && canEdit && (isSelected || isHovered) && (
-        <ConnectionHandle cardId={card.id} position="right" />
+        <ConnectionHandle
+          cardId={card.id}
+          cardX={card.x}
+          cardY={card.y}
+          cardWidth={width}
+          cardHeight={height}
+          position="right"
+        />
       )}
 
       {/* Resize handle - only show for non-sticker cards and if can edit */}

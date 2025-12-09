@@ -43,10 +43,16 @@ export function TiptapEditor({ content, onUpdate, onBlur, editable }: TiptapEdit
     }
   }, [content, editor])
 
-  // Update editable state
+  // Update editable state and focus when becoming editable
   useEffect(() => {
     if (editor) {
       editor.setEditable(editable)
+      // Auto-focus and place cursor at end when entering edit mode
+      if (editable) {
+        setTimeout(() => {
+          editor.commands.focus('end')
+        }, 10)
+      }
     }
   }, [editable, editor])
 

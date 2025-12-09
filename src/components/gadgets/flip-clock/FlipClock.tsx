@@ -148,6 +148,8 @@ export function FlipClock({ onClose }: FlipClockProps) {
   const dragStart = useRef({ x: 0, y: 0, startX: 0, startY: 0 })
   const prevTime = useRef(time)
   const lastClickTime = useRef(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const pointerIdRef = useRef<number | null>(null)
 
   // Update time every second
   useEffect(() => {
@@ -198,21 +200,34 @@ export function FlipClock({ onClose }: FlipClockProps) {
     }, 600)
   }
 
-  // Dragging logic
+  // Dragging logic - use native touch events for reliable touch dragging
   const handlePointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button')) return
+
+    // Prevent default to stop browser touch handling
+    e.preventDefault()
+
     setIsDragging(true)
+    pointerIdRef.current = e.pointerId
     dragStart.current = {
       x: e.clientX,
       y: e.clientY,
       startX: position.x,
       startY: position.y,
     }
-    e.currentTarget.setPointerCapture(e.pointerId)
+
+    // Use setPointerCapture for reliable tracking
+    if (containerRef.current) {
+      containerRef.current.setPointerCapture(e.pointerId)
+    }
   }
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging) return
+    if (!isDragging || e.pointerId !== pointerIdRef.current) return
+
+    // Prevent default to avoid scroll interference
+    e.preventDefault()
+
     const dx = e.clientX - dragStart.current.x
     const dy = e.clientY - dragStart.current.y
     setPosition({
@@ -222,8 +237,24 @@ export function FlipClock({ onClose }: FlipClockProps) {
   }
 
   const handlePointerUp = (e: React.PointerEvent) => {
+    if (e.pointerId !== pointerIdRef.current) return
+
     setIsDragging(false)
-    e.currentTarget.releasePointerCapture(e.pointerId)
+    pointerIdRef.current = null
+
+    if (containerRef.current) {
+      try {
+        containerRef.current.releasePointerCapture(e.pointerId)
+      } catch {
+        // Ignore errors if capture already released
+      }
+    }
+  }
+
+  const handlePointerCancel = (e: React.PointerEvent) => {
+    if (e.pointerId !== pointerIdRef.current) return
+    setIsDragging(false)
+    pointerIdRef.current = null
   }
 
   // Format helpers
@@ -246,6 +277,7 @@ export function FlipClock({ onClose }: FlipClockProps) {
 
   return (
     <div
+      ref={containerRef}
       style={{
         position: 'fixed',
         left: position.x,
@@ -253,12 +285,15 @@ export function FlipClock({ onClose }: FlipClockProps) {
         zIndex: 2000,
         cursor: isDragging ? 'grabbing' : 'grab',
         userSelect: 'none',
+        touchAction: 'none', // Critical: prevent browser touch handling for smooth drag
         filter: 'drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3))',
         perspective: '1000px',
       }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onPointerLeave={handlePointerUp}
     >
       {/* Flip container with 3D transform */}
       <div

@@ -3,6 +3,7 @@
 
 import { useSpatialStore } from '../../stores/spatialStore'
 import { Connection } from './Connection'
+import { TempConnectionLine } from './TempConnectionLine'
 
 export function ConnectionsLayer() {
   const { space, selectedConnectionIds } = useSpatialStore()
@@ -43,6 +44,9 @@ export function ConnectionsLayer() {
           />
         )
       })}
+
+      {/* Temporary line while dragging to create connection */}
+      <TempConnectionLine />
     </svg>
   )
 }

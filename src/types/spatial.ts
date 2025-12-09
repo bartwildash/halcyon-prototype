@@ -1,6 +1,11 @@
 // Spatial Canvas Type Definitions
 // Following the Kinopio-inspired architecture for DOM-based infinite canvas
 
+import type { InkStroke, InkBrush } from './ink'
+
+// Re-export ink types for convenience
+export type { InkStroke, InkBrush }
+
 export interface Position {
   x: number
   y: number
@@ -31,6 +36,7 @@ export interface Card {
   completed?: boolean
   energy?: 'high_focus' | 'medium' | 'low_energy' | 'social'
   signal?: 'background' | 'normal' | 'loud' | 'critical'
+  bucket?: 'now' | 'next' | 'later' | 'someday'  // CRUMPIT triage bucket
 
   // Person-specific fields
   role?: string
@@ -81,6 +87,7 @@ export interface Space {
   cards: Card[]
   connections: Connection[]
   boxes: Box[]
+  inkStrokes: InkStroke[]        // Drawing layer strokes
   background?: string            // Color or image URL
   zoom: number                   // Current zoom level (0.1 - 3)
   scrollX: number               // Pan position

@@ -14,7 +14,8 @@ interface SelectionCanvasProps {
 }
 
 // Drag threshold - must move this many pixels before starting selection
-const DRAG_THRESHOLD = 15 // Increased from implicit 0 to 15px
+// Reduced to 5px since user explicitly chose select tool
+const DRAG_THRESHOLD = 5
 
 export function SelectionCanvas({ zoom, scrollX, scrollY, containerRef }: SelectionCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -28,7 +29,7 @@ export function SelectionCanvas({ zoom, scrollX, scrollY, containerRef }: Select
   // Touch interaction management (Kinopio pattern)
   const touchManager = useRef(new TouchInteractionManager())
 
-  const { space, selectCardsInArea, clearSelection } = useSpatialStore()
+  const { space, selectCardsInArea, clearSelection, isPanning, toolMode } = useSpatialStore()
 
   // Resize canvas to match viewport
   useEffect(() => {
@@ -114,6 +115,12 @@ export function SelectionCanvas({ zoom, scrollX, scrollY, containerRef }: Select
   // Handle pointer down - start selection
   const handlePointerDown = useCallback(
     (e: PointerEvent) => {
+      // Only allow selection in 'select' tool mode
+      if (toolMode !== 'select') return
+
+      // Don't start selection if we're panning the canvas
+      if (isPanning) return
+
       // Prevent multi-touch conflicts (pinch zoom, etc)
       if (isMultiTouch(e as any)) {
         touchManager.current.cancel()
@@ -147,13 +154,27 @@ export function SelectionCanvas({ zoom, scrollX, scrollY, containerRef }: Select
 
       // Don't draw until threshold is exceeded
     },
-    [containerRef]
+    [containerRef, isPanning, toolMode]
   )
 
   // Handle pointer move - update selection
   const handlePointerMove = useCallback(
     (e: PointerEvent) => {
       if (!isDrawing.current) return
+
+      // Cancel selection if panning started
+      if (isPanning) {
+        isDrawing.current = false
+        hasMoved.current = false
+        lassoPoints.current = []
+        // Clear canvas
+        const canvas = canvasRef.current
+        const ctx = canvas?.getContext('2d')
+        if (ctx && canvas) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
+        }
+        return
+      }
 
       currentPoint.current = { x: e.clientX, y: e.clientY }
 
@@ -183,7 +204,7 @@ export function SelectionCanvas({ zoom, scrollX, scrollY, containerRef }: Select
 
       drawSelection()
     },
-    [drawSelection]
+    [drawSelection, isPanning]
   )
 
   // Handle pointer up - complete selection

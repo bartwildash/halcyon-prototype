@@ -60,6 +60,9 @@ export function distance(p1: Position, p2: Position): number {
 }
 
 // Convert screen coordinates to canvas coordinates
+// CSS transform is: scale(zoom) translate(scrollX, scrollY)
+// So: screenPos = (canvasPos + scroll) * zoom
+// Therefore: canvasPos = screenPos / zoom - scroll
 export function screenToCanvas(
   screenX: number,
   screenY: number,
@@ -68,12 +71,14 @@ export function screenToCanvas(
   scrollY: number
 ): Position {
   return {
-    x: (screenX - scrollX) / zoom,
-    y: (screenY - scrollY) / zoom,
+    x: screenX / zoom - scrollX,
+    y: screenY / zoom - scrollY,
   }
 }
 
 // Convert canvas coordinates to screen coordinates
+// CSS transform is: scale(zoom) translate(scrollX, scrollY)
+// So: screenPos = (canvasPos + scroll) * zoom
 export function canvasToScreen(
   canvasX: number,
   canvasY: number,
@@ -82,8 +87,8 @@ export function canvasToScreen(
   scrollY: number
 ): Position {
   return {
-    x: canvasX * zoom + scrollX,
-    y: canvasY * zoom + scrollY,
+    x: (canvasX + scrollX) * zoom,
+    y: (canvasY + scrollY) * zoom,
   }
 }
 
@@ -93,23 +98,27 @@ export function clampZoom(zoom: number): number {
 }
 
 // Viewport culling - check if card is visible in viewport
+// Uses screenToCanvas to convert viewport corners to canvas coordinates
 export function isCardInViewport(
   card: Card,
-  viewportX: number,
-  viewportY: number,
+  scrollX: number,
+  scrollY: number,
   viewportWidth: number,
   viewportHeight: number,
   zoom: number,
-  margin: number = 200 // Render cards slightly outside viewport
+  margin: number = 200 // Render cards slightly outside viewport (in canvas coordinates)
 ): boolean {
   const cardWidth = card.width || 200
   const cardHeight = card.height || 100
 
-  // Convert viewport bounds to canvas coordinates
-  const viewportLeft = -viewportX / zoom - margin
-  const viewportTop = -viewportY / zoom - margin
-  const viewportRight = (-viewportX + viewportWidth) / zoom + margin
-  const viewportBottom = (-viewportY + viewportHeight) / zoom + margin
+  // Convert viewport screen bounds to canvas coordinates
+  // screenToCanvas: canvasPos = screenPos / zoom - scroll
+  // Screen (0, 0) -> canvas (-scrollX, -scrollY)
+  // Screen (viewportWidth, viewportHeight) -> canvas (viewportWidth/zoom - scrollX, viewportHeight/zoom - scrollY)
+  const viewportLeft = -scrollX - margin
+  const viewportTop = -scrollY - margin
+  const viewportRight = viewportWidth / zoom - scrollX + margin
+  const viewportBottom = viewportHeight / zoom - scrollY + margin
 
   // Check if card bounds intersect with viewport bounds
   const cardLeft = card.x
@@ -126,6 +135,12 @@ export function isCardInViewport(
 }
 
 // Calculate new scroll position when zooming toward a point
+// The cursor screen position should map to the same canvas position before and after zoom
+// Before: canvasPos = cursorX / oldZoom - oldScroll
+// After:  canvasPos = cursorX / newZoom - newScroll
+// Setting equal: cursorX / oldZoom - oldScroll = cursorX / newZoom - newScroll
+// Solving: newScroll = cursorX / newZoom - cursorX / oldZoom + oldScroll
+//                    = cursorX * (1/newZoom - 1/oldZoom) + oldScroll
 export function zoomTowardPoint(
   cursorX: number,
   cursorY: number,
@@ -134,10 +149,8 @@ export function zoomTowardPoint(
   oldScrollX: number,
   oldScrollY: number
 ): Position {
-  // Formula: newScroll = cursorPos - (cursorPos - oldScroll) * (newZoom / oldZoom)
-  const zoomRatio = newZoom / oldZoom
   return {
-    x: cursorX - (cursorX - oldScrollX) * zoomRatio,
-    y: cursorY - (cursorY - oldScrollY) * zoomRatio,
+    x: cursorX * (1 / newZoom - 1 / oldZoom) + oldScrollX,
+    y: cursorY * (1 / newZoom - 1 / oldZoom) + oldScrollY,
   }
 }

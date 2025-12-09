@@ -105,6 +105,13 @@
   color: var(--primary);
 }
 
+/* Connection target highlight - when dragging to create connection */
+.spatial-card.connection-target {
+  outline: 3px solid var(--accent-color) !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), var(--card-shadow) !important;
+}
+
 /* Custom scrollbar for canvas (if needed) */
 .space-container::-webkit-scrollbar {
   display: none;

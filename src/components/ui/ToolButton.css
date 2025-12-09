@@ -1,0 +1,247 @@
+/**
+ * ToolButton Styles
+ * Floating draggable tool menu with hammer icon
+ */
+
+.tool-button-container {
+  position: fixed;
+  z-index: 1000;
+  user-select: none;
+  touch-action: none;
+}
+
+/* Main hammer button */
+.tool-button-main {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: white;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    0 4px 20px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  touch-action: none;
+}
+
+.tool-button-main:hover {
+  transform: scale(1.05);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    0 6px 24px rgba(0, 0, 0, 0.15);
+}
+
+.tool-button-main:active {
+  transform: scale(0.95);
+}
+
+.tool-button-main--dragging {
+  transform: scale(1.1);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.25),
+    0 12px 40px rgba(0, 0, 0, 0.2);
+  cursor: grabbing;
+}
+
+/* Expanded menu */
+.tool-button-menu {
+  position: absolute;
+  left: 64px;
+  top: 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    0 8px 32px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  min-width: 180px;
+  animation: menu-slide-in 0.15s ease-out;
+}
+
+@keyframes menu-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Category tabs */
+.tool-button-categories {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.tool-category-tab {
+  flex: 1;
+  padding: 10px 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  transition: background 0.1s ease;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tool-category-tab:hover {
+  background: #f3f4f6;
+}
+
+.tool-category-tab--active {
+  background: white;
+  border-bottom-color: #3b82f6;
+}
+
+/* Panel content */
+.tool-button-panel {
+  padding: 12px;
+}
+
+.tool-panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.tool-panel-hint {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 8px;
+  text-align: center;
+}
+
+/* Tool grid */
+.tool-button-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tool-button-grid--shapes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+/* Individual tool items */
+.tool-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #374151;
+  transition: background 0.1s ease, transform 0.1s ease;
+  text-align: left;
+}
+
+.tool-item:hover {
+  background: #e5e7eb;
+}
+
+.tool-item:active {
+  transform: scale(0.98);
+}
+
+.tool-item--active {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.tool-item--shape {
+  aspect-ratio: 1;
+  justify-content: center;
+  font-size: 20px;
+  padding: 12px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .tool-button-main {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+
+  .tool-button-menu {
+    left: 56px;
+    min-width: 160px;
+  }
+
+  .tool-item {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .tool-button-main {
+    background: #1f2937;
+    color: white;
+  }
+
+  .tool-button-menu {
+    background: #1f2937;
+  }
+
+  .tool-button-categories {
+    background: #111827;
+    border-bottom-color: #374151;
+  }
+
+  .tool-category-tab:hover {
+    background: #374151;
+  }
+
+  .tool-category-tab--active {
+    background: #1f2937;
+  }
+
+  .tool-panel-title {
+    color: #9ca3af;
+  }
+
+  .tool-item {
+    background: #374151;
+    color: #f3f4f6;
+  }
+
+  .tool-item:hover {
+    background: #4b5563;
+  }
+
+  .tool-item--active {
+    background: #1e40af;
+    color: #dbeafe;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .tool-button-main,
+  .tool-item {
+    transition: none;
+  }
+
+  .tool-button-menu {
+    animation: none;
+  }
+}

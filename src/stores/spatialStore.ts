@@ -2,7 +2,7 @@
 // Follows "speed first" principle: instant updates, async persistence
 
 import { create } from 'zustand'
-import type { Space, Card, Connection, Box } from '../types/spatial'
+import type { Space, Card, Connection, Box, InkStroke } from '../types/spatial'
 import { saveSpace, loadSpace } from '../utils/persistence'
 import { useHistoryStore } from './historyStore'
 
@@ -25,6 +25,9 @@ function immediateSave(space: Space) {
   saveSpace(space)
 }
 
+// Tool modes for the canvas
+export type ToolMode = 'hand' | 'select' | 'draw'
+
 interface SpatialStore {
   // Current space
   space: Space | null
@@ -33,6 +36,7 @@ interface SpatialStore {
   selectedBoxIds: Set<string>
   isDragging: boolean
   isPanning: boolean
+  toolMode: ToolMode
 
   // Actions
   loadSpace: (spaceId: string) => Promise<void>
@@ -65,6 +69,11 @@ interface SpatialStore {
   setPan: (scrollX: number, scrollY: number) => void
   setIsDragging: (isDragging: boolean) => void
   setIsPanning: (isPanning: boolean) => void
+  setToolMode: (mode: ToolMode) => void
+
+  // Ink/Drawing actions
+  setInkStrokes: (strokes: InkStroke[]) => void
+  clearInkStrokes: () => void
 }
 
 // Default user ID (in real app, from auth)
@@ -82,6 +91,7 @@ export const useSpatialStore = create<SpatialStore>((set, get) => ({
   selectedBoxIds: new Set(),
   isDragging: false,
   isPanning: false,
+  toolMode: 'hand' as ToolMode,
 
   loadSpace: async (spaceId: string) => {
     // INSTANT: Restore from IndexedDB
@@ -96,6 +106,7 @@ export const useSpatialStore = create<SpatialStore>((set, get) => ({
         cards: [],
         connections: [],
         boxes: [],
+        inkStrokes: [],
         zoom: 1,
         scrollX: 0,
         scrollY: 0,
@@ -116,6 +127,7 @@ export const useSpatialStore = create<SpatialStore>((set, get) => ({
       cards: [],
       connections: [],
       boxes: [],
+      inkStrokes: [],
       zoom: 1,
       scrollX: 0,
       scrollY: 0,
@@ -442,5 +454,35 @@ export const useSpatialStore = create<SpatialStore>((set, get) => ({
 
   setIsPanning: (isPanning: boolean) => {
     set({ isPanning })
+  },
+
+  setToolMode: (mode: ToolMode) => {
+    set({ toolMode: mode })
+  },
+
+  setInkStrokes: (strokes: InkStroke[]) => {
+    const { space } = get()
+    if (!space) return
+
+    const updatedSpace = {
+      ...space,
+      inkStrokes: strokes,
+      updatedAt: new Date().toISOString(),
+    }
+    set({ space: updatedSpace })
+    debouncedSave(updatedSpace) // Ink = debounced (for smooth drawing)
+  },
+
+  clearInkStrokes: () => {
+    const { space } = get()
+    if (!space) return
+
+    const updatedSpace = {
+      ...space,
+      inkStrokes: [],
+      updatedAt: new Date().toISOString(),
+    }
+    set({ space: updatedSpace })
+    immediateSave(updatedSpace) // Clear = immediate save
   },
 }))

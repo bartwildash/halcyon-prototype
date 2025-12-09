@@ -1,22 +1,28 @@
 // Pan and Zoom Hook
-// Handles canvas navigation: pan via drag, zoom via wheel/pinch, double-tap zoom
+// Handles canvas navigation: pan via drag, zoom via wheel/pinch
 
 import { useRef, useCallback, useEffect } from 'react'
 import { useSpatialStore } from '../stores/spatialStore'
 import { clampZoom, zoomTowardPoint } from '../utils/geometry'
-import { DoubleTapDetector, isMultiTouch } from '../utils/touch'
+import { isMultiTouch } from '../utils/touch'
+
+// Drag threshold before panning starts (prevents accidental pans on click)
+const PAN_THRESHOLD = 3
 
 export function usePanZoom(containerRef: React.RefObject<HTMLElement>) {
-  const { space, setZoom, setPan, setIsPanning } = useSpatialStore()
+  const { space, setZoom, setPan, setIsPanning, toolMode } = useSpatialStore()
   const isPanningRef = useRef(false)
+  const panThresholdCrossed = useRef(false)
   const lastPanPos = useRef({ x: 0, y: 0 })
   const panStart = useRef({ scrollX: 0, scrollY: 0, clientX: 0, clientY: 0 })
   const pinchDistance = useRef<number | null>(null)
-  const doubleTapDetector = useRef(new DoubleTapDetector())
 
-  // Pan via drag
+  // Pan via drag (only in hand mode)
   const handlePointerDown = useCallback(
     (e: PointerEvent) => {
+      // Only pan in hand mode (or with middle mouse button)
+      if (toolMode !== 'hand' && e.button !== 1) return
+
       // Only pan on middle mouse or left mouse on empty space
       if (e.button !== 0 && e.button !== 1) return
 
@@ -29,7 +35,7 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement>) {
       if (!space) return
 
       isPanningRef.current = true
-      setIsPanning(true)
+      panThresholdCrossed.current = false // Reset threshold
       lastPanPos.current = { x: e.clientX, y: e.clientY }
       // Store starting position to avoid state accumulation issues
       panStart.current = {
@@ -40,7 +46,7 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement>) {
       }
       e.preventDefault()
     },
-    [space, setIsPanning]
+    [space, toolMode]
   )
 
   const handlePointerMove = useCallback(
@@ -51,6 +57,16 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement>) {
       const totalDx = e.clientX - panStart.current.clientX
       const totalDy = e.clientY - panStart.current.clientY
 
+      // Check if threshold has been crossed
+      if (!panThresholdCrossed.current) {
+        const distance = Math.sqrt(totalDx * totalDx + totalDy * totalDy)
+        if (distance < PAN_THRESHOLD) {
+          return // Haven't moved enough to start panning
+        }
+        panThresholdCrossed.current = true
+        setIsPanning(true) // Now we're actually panning
+      }
+
       setPan(
         panStart.current.scrollX + totalDx,
         panStart.current.scrollY + totalDy
@@ -58,44 +74,15 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement>) {
 
       lastPanPos.current = { x: e.clientX, y: e.clientY }
     },
-    [setPan]
+    [setPan, setIsPanning]
   )
 
   const handlePointerUp = useCallback(
-    (e: PointerEvent) => {
+    () => {
       isPanningRef.current = false
       setIsPanning(false)
-
-      // Handle double-tap zoom on mobile
-      if (doubleTapDetector.current.isDoubleTap(e as any)) {
-        if (!space) return
-
-        const rect = containerRef.current?.getBoundingClientRect()
-        if (!rect) return
-
-        // Zoom in/out on double-tap
-        const oldZoom = space.zoom
-        const isZoomedIn = oldZoom > 1.2
-        const newZoom = isZoomedIn ? 1 : clampZoom(oldZoom * 1.8) // Zoom in to 1.8x or reset to 1
-
-        // Zoom toward tap position
-        const cursorX = e.clientX - rect.left
-        const cursorY = e.clientY - rect.top
-
-        const newScroll = zoomTowardPoint(
-          cursorX,
-          cursorY,
-          oldZoom,
-          newZoom,
-          space.scrollX,
-          space.scrollY
-        )
-
-        setZoom(newZoom)
-        setPan(newScroll.x, newScroll.y)
-      }
     },
-    [setIsPanning, space, containerRef, setZoom, setPan]
+    [setIsPanning]
   )
 
   // Zoom via wheel
