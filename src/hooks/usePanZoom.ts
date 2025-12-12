@@ -124,7 +124,7 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement>) {
   // Pinch zoom on mobile
   const handleTouchStart = useCallback((e: TouchEvent) => {
     // Only handle 2-finger pinch (multi-touch)
-    if (e.touches.length === 2 && isMultiTouch(e as any)) {
+    if (e.touches.length === 2 && isMultiTouch(e)) {
       const touch1 = e.touches[0]
       const touch2 = e.touches[1]
       const dx = touch2.clientX - touch1.clientX

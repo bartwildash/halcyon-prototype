@@ -24,7 +24,7 @@ import '../styles/spatial.css'
 const SPACE_ID = 'demo-space'
 
 export function SpatialDemo() {
-  const { space, createCard, updateCard, setPan, setZoom, deleteAllCards, toolMode, setToolMode } = useSpatialStore()
+  const { space, createCard, updateCard, setPan, setZoom, deleteAllCards, setToolMode } = useSpatialStore()
   const [instructionsExpanded, setInstructionsExpanded] = useState(false)
   const [showTimer, setShowTimer] = useState(false)
   const [showFlipClock, setShowFlipClock] = useState(false)
@@ -151,7 +151,7 @@ export function SpatialDemo() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [space, showCommandPalette, showKeyboardGuide, showPlan, setToolMode, createCard, setZoom])
+  }, [space, showCommandPalette, showKeyboardGuide, showPlan, setToolMode, createCard, setZoom, handleZoomIn, handleZoomOut])
 
   // Export handler
   const handleExport = useCallback(() => {
@@ -265,7 +265,7 @@ export function SpatialDemo() {
   }
 
   // Zoom controls - zoom toward viewport center
-  const handleZoomIn = () => {
+  const handleZoomIn = useCallback(() => {
     if (!space) return
 
     const oldZoom = space.zoom
@@ -278,9 +278,9 @@ export function SpatialDemo() {
 
     setZoom(newZoom)
     setPan(newScroll.x, newScroll.y)
-  }
+  }, [space, setZoom, setPan])
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     if (!space) return
 
     const oldZoom = space.zoom
@@ -293,7 +293,7 @@ export function SpatialDemo() {
 
     setZoom(newZoom)
     setPan(newScroll.x, newScroll.y)
-  }
+  }, [space, setZoom, setPan])
 
   // Initialize Halcyon spatial zones demo on first load
   useEffect(() => {
