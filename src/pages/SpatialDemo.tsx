@@ -18,7 +18,7 @@ import { PlanBoard } from '../components/spatial/PlanBoard'
 import { useSync } from '../hooks/useSync'
 import { exportSpace, importSpace, pickImportFile } from '../utils/exportImport'
 import { LANDMARKS } from '../config/landmarks'
-import { MIN_ZOOM, MAX_ZOOM } from '../utils/geometry'
+import { MIN_ZOOM, MAX_ZOOM, zoomTowardPoint } from '../utils/geometry'
 import '../styles/spatial.css'
 
 const SPACE_ID = 'demo-space'
@@ -193,9 +193,11 @@ export function SpatialDemo() {
     const canvasY = 5000 + y
 
     // Calculate scroll position to center this point on screen
-    // scroll = -(canvasPos * zoom - viewportCenter)
-    const targetX = -(canvasX * space.zoom - window.innerWidth / 2)
-    const targetY = -(canvasY * space.zoom - window.innerHeight / 2)
+    // scroll = viewportCenter/zoom - canvasPos
+    const centerX = window.innerWidth / 2
+    const centerY = window.innerHeight / 2
+    const targetX = centerX / space.zoom - canvasX
+    const targetY = centerY / space.zoom - canvasY
 
     // Current position
     const startX = space.scrollX
@@ -236,9 +238,9 @@ export function SpatialDemo() {
     if (!space) return
 
     // Get current viewport center in canvas coordinates
-    // The scroll is negative, so: canvasPos = (viewportPos - scrollPos) / zoom
-    const viewportCenterCanvasX = (window.innerWidth / 2 - space.scrollX) / space.zoom
-    const viewportCenterCanvasY = (window.innerHeight / 2 - space.scrollY) / space.zoom
+    // canvasPos = screenPos/zoom - scroll
+    const viewportCenterCanvasX = window.innerWidth / 2 / space.zoom - space.scrollX
+    const viewportCenterCanvasY = window.innerHeight / 2 / space.zoom - space.scrollY
 
     // Convert to viewport-relative coords (landmarks use 0,0 = center at 5000,5000)
     const viewportRelX = viewportCenterCanvasX - 5000
@@ -272,19 +274,10 @@ export function SpatialDemo() {
     // Zoom toward center of viewport
     const centerX = window.innerWidth / 2
     const centerY = window.innerHeight / 2
-
-    // Point in canvas coordinates that's at viewport center
-    const canvasPoint = {
-      x: (centerX - space.scrollX) / oldZoom,
-      y: (centerY - space.scrollY) / oldZoom,
-    }
-
-    // Keep that same canvas point at the viewport center after zoom
-    const newScrollX = centerX - canvasPoint.x * newZoom
-    const newScrollY = centerY - canvasPoint.y * newZoom
+    const newScroll = zoomTowardPoint(centerX, centerY, oldZoom, newZoom, space.scrollX, space.scrollY)
 
     setZoom(newZoom)
-    setPan(newScrollX, newScrollY)
+    setPan(newScroll.x, newScroll.y)
   }
 
   const handleZoomOut = () => {
@@ -296,19 +289,10 @@ export function SpatialDemo() {
     // Zoom toward center of viewport
     const centerX = window.innerWidth / 2
     const centerY = window.innerHeight / 2
-
-    // Point in canvas coordinates that's at viewport center
-    const canvasPoint = {
-      x: (centerX - space.scrollX) / oldZoom,
-      y: (centerY - space.scrollY) / oldZoom,
-    }
-
-    // Keep that same canvas point at the viewport center after zoom
-    const newScrollX = centerX - canvasPoint.x * newZoom
-    const newScrollY = centerY - canvasPoint.y * newZoom
+    const newScroll = zoomTowardPoint(centerX, centerY, oldZoom, newZoom, space.scrollX, space.scrollY)
 
     setZoom(newZoom)
-    setPan(newScrollX, newScrollY)
+    setPan(newScroll.x, newScroll.y)
   }
 
   // Initialize Halcyon spatial zones demo on first load
@@ -512,7 +496,7 @@ export function SpatialDemo() {
     }, 620)
 
     setTimeout(() => {
-      const cardId = createCard(lakeX - 100, lakeY + 260, 'Pan: drag canvas\nZoom: scroll/pinch\nCreate: double-click')
+      const cardId = createCard(lakeX - 100, lakeY + 260, 'Pan: drag canvas\nZoom: scroll/pinch\nCreate: double-click / double-tap')
       updateCard(cardId, {
         cardType: 'note',
         color: '#F8F8F8',

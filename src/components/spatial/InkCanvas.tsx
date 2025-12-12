@@ -27,6 +27,8 @@ export function InkCanvas({
   const svgRef = useRef<SVGSVGElement>(null)
   const [currentPoints, setCurrentPoints] = useState<number[]>([])
   const isDrawing = useRef(false)
+  const drawingPointerId = useRef<number | null>(null)
+  const activeTouchPointers = useRef<Set<number>>(new Set())
 
   // Convert screen coordinates to canvas coordinates
   const screenToCanvas = useCallback((screenX: number, screenY: number) => {
@@ -64,10 +66,19 @@ export function InkCanvas({
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (!isDrawingMode) return
 
+    // Ignore multi-touch so pinch/2-finger pan can still work
+    if (e.pointerType === 'touch') {
+      if (activeTouchPointers.current.size > 0) {
+        return
+      }
+      activeTouchPointers.current.add(e.pointerId)
+    }
+
     e.preventDefault()
     e.stopPropagation()
 
     isDrawing.current = true
+    drawingPointerId.current = e.pointerId
     const { x, y } = screenToCanvas(e.clientX, e.clientY)
     setCurrentPoints([x, y])
 
@@ -77,6 +88,7 @@ export function InkCanvas({
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDrawing.current || !isDrawingMode) return
+    if (drawingPointerId.current !== e.pointerId) return
 
     const { x, y } = screenToCanvas(e.clientX, e.clientY)
 
@@ -85,8 +97,18 @@ export function InkCanvas({
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     if (!isDrawing.current) return
+    if (drawingPointerId.current !== e.pointerId) {
+      if (e.pointerType === 'touch') {
+        activeTouchPointers.current.delete(e.pointerId)
+      }
+      return
+    }
 
     isDrawing.current = false
+    drawingPointerId.current = null
+    if (e.pointerType === 'touch') {
+      activeTouchPointers.current.delete(e.pointerId)
+    }
     ;(e.target as Element).releasePointerCapture(e.pointerId)
 
     if (currentPoints.length >= 4) {

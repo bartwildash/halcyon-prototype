@@ -14,7 +14,8 @@ import { ZoneBackground } from './ZoneBackground'
 import { EmbeddedCrumpit } from './EmbeddedCrumpit'
 import { InkCanvas } from './InkCanvas'
 import { CardContextMenu } from '../ui/CardContextMenu'
-import { isCardInViewport } from '../../utils/geometry'
+import { isCardInViewport, screenToCanvas } from '../../utils/geometry'
+import { DoubleTapDetector } from '../../utils/touch'
 import type { InkStroke } from '../../types/spatial'
 
 interface SpaceProps {
@@ -26,7 +27,7 @@ interface SpaceProps {
 export function Space({ spaceId, backgroundMode = 'osb' }: SpaceProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
-  const { space, loadSpace, clearSelection, toolMode, setInkStrokes } = useSpatialStore()
+  const { space, loadSpace, clearSelection, toolMode, setInkStrokes, createCard } = useSpatialStore()
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -50,6 +51,88 @@ export function Space({ spaceId, backgroundMode = 'osb' }: SpaceProps) {
 
   // Initialize pan/zoom (casting containerRef to RefObject<HTMLElement>)
   const { zoom, scrollX, scrollY } = usePanZoom(containerRef as React.RefObject<HTMLElement>)
+
+  // Double-click / double-tap on empty canvas to create a card
+  const doubleTapDetector = useRef(new DoubleTapDetector())
+  const touchTapState = useRef<{
+    pointerId: number | null
+    startX: number
+    startY: number
+    moved: boolean
+  }>({ pointerId: null, startX: 0, startY: 0, moved: false })
+
+  const createCardAtScreenPoint = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!space) return
+      const rect = containerRef.current?.getBoundingClientRect()
+      if (!rect) return
+
+      const canvasPos = screenToCanvas(
+        clientX - rect.left,
+        clientY - rect.top,
+        zoom,
+        scrollX,
+        scrollY
+      )
+
+      createCard(canvasPos.x, canvasPos.y, '')
+    },
+    [space, createCard, zoom, scrollX, scrollY]
+  )
+
+  const handleBackgroundDoubleClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (toolMode !== 'hand') return
+
+      const target = e.target as HTMLElement
+      if (target.closest('.spatial-card') || target.closest('.spatial-connection')) return
+
+      createCardAtScreenPoint(e.clientX, e.clientY)
+    },
+    [toolMode, createCardAtScreenPoint]
+  )
+
+  const handlePointerDownForTap = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'touch') return
+    touchTapState.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+    }
+  }, [])
+
+  const handlePointerMoveForTap = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'touch') return
+    if (touchTapState.current.pointerId !== e.pointerId) return
+
+    const dx = e.clientX - touchTapState.current.startX
+    const dy = e.clientY - touchTapState.current.startY
+    if (Math.hypot(dx, dy) > 10) {
+      touchTapState.current.moved = true
+    }
+  }, [])
+
+  const handlePointerUpForTap = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.pointerType !== 'touch') return
+
+      const state = touchTapState.current
+      if (state.pointerId !== e.pointerId) return
+      touchTapState.current.pointerId = null
+
+      if (state.moved) return
+      if (toolMode !== 'hand') return
+
+      const target = e.target as HTMLElement
+      if (target.closest('.spatial-card') || target.closest('.spatial-connection')) return
+
+      if (doubleTapDetector.current.isDoubleTap(e)) {
+        createCardAtScreenPoint(e.clientX, e.clientY)
+      }
+    },
+    [toolMode, createCardAtScreenPoint]
+  )
 
   // Initialize undo/redo (Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z)
   useUndoRedo()
@@ -131,6 +214,11 @@ export function Space({ spaceId, backgroundMode = 'osb' }: SpaceProps) {
         touchAction: 'none',
       }}
       onContextMenu={handleContextMenu}
+      onDoubleClick={handleBackgroundDoubleClick}
+      onPointerDown={handlePointerDownForTap}
+      onPointerMove={handlePointerMoveForTap}
+      onPointerUp={handlePointerUpForTap}
+      onPointerCancel={handlePointerUpForTap}
     >
       {/* Bench background texture - warm OSB chipboard feel */}
       <BenchBackground mode={backgroundMode} zoom={zoom} />

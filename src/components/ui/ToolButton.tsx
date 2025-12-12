@@ -42,7 +42,7 @@ export function ToolButton({
   showGraph,
   onToggleGraph,
 }: ToolButtonProps) {
-  const { interactionMode, setInteractionMode, space, setZoom } = useSpatialStore()
+  const { toolMode, setToolMode, space, setZoom } = useSpatialStore()
 
   const [isOpen, setIsOpen] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
@@ -139,8 +139,8 @@ export function ToolButton({
   }, [isOpen])
 
   // Tool actions
-  const handleModeChange = (mode: 'pan' | 'select' | 'draw') => {
-    setInteractionMode(mode)
+  const handleModeChange = (mode: 'hand' | 'select' | 'draw') => {
+    setToolMode(mode)
   }
 
   const handleZoom = (delta: number) => {
@@ -151,7 +151,7 @@ export function ToolButton({
 
   // Mode icons
   const modeIcon = {
-    pan: '✋',
+    hand: '✋',
     select: '👆',
     draw: '✏️',
   }
@@ -184,7 +184,7 @@ export function ToolButton({
               onClick={() => setActiveCategory(activeCategory === 'modes' ? null : 'modes')}
               title="Interaction modes"
             >
-              {modeIcon[interactionMode]}
+              {modeIcon[toolMode]}
             </button>
             <button
               className={`tool-category-tab ${activeCategory === 'shapes' ? 'tool-category-tab--active' : ''}`}
@@ -222,19 +222,19 @@ export function ToolButton({
               <div className="tool-panel-title">Mode</div>
               <div className="tool-button-grid">
                 <button
-                  className={`tool-item ${interactionMode === 'pan' ? 'tool-item--active' : ''}`}
-                  onClick={() => handleModeChange('pan')}
+                  className={`tool-item ${toolMode === 'hand' ? 'tool-item--active' : ''}`}
+                  onClick={() => handleModeChange('hand')}
                 >
                   ✋ Pan
                 </button>
                 <button
-                  className={`tool-item ${interactionMode === 'select' ? 'tool-item--active' : ''}`}
+                  className={`tool-item ${toolMode === 'select' ? 'tool-item--active' : ''}`}
                   onClick={() => handleModeChange('select')}
                 >
                   👆 Select
                 </button>
                 <button
-                  className={`tool-item ${interactionMode === 'draw' ? 'tool-item--active' : ''}`}
+                  className={`tool-item ${toolMode === 'draw' ? 'tool-item--active' : ''}`}
                   onClick={() => handleModeChange('draw')}
                 >
                   ✏️ Draw

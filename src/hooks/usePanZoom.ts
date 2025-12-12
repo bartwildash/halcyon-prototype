@@ -14,8 +14,9 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement>) {
   const isPanningRef = useRef(false)
   const panThresholdCrossed = useRef(false)
   const lastPanPos = useRef({ x: 0, y: 0 })
-  const panStart = useRef({ scrollX: 0, scrollY: 0, clientX: 0, clientY: 0 })
+  const panStart = useRef({ scrollX: 0, scrollY: 0, clientX: 0, clientY: 0, zoom: 1 })
   const pinchDistance = useRef<number | null>(null)
+  const pinchMidpoint = useRef<{ x: number; y: number } | null>(null)
 
   // Pan via drag (only in hand mode)
   const handlePointerDown = useCallback(
@@ -43,6 +44,7 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement>) {
         scrollY: space.scrollY,
         clientX: e.clientX,
         clientY: e.clientY,
+        zoom: space.zoom || 1,
       }
       e.preventDefault()
     },
@@ -56,6 +58,7 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement>) {
       // Calculate total delta from drag start (more reliable than accumulating)
       const totalDx = e.clientX - panStart.current.clientX
       const totalDy = e.clientY - panStart.current.clientY
+      const zoomAtStart = panStart.current.zoom || 1
 
       // Check if threshold has been crossed
       if (!panThresholdCrossed.current) {
@@ -67,10 +70,7 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement>) {
         setIsPanning(true) // Now we're actually panning
       }
 
-      setPan(
-        panStart.current.scrollX + totalDx,
-        panStart.current.scrollY + totalDy
-      )
+      setPan(panStart.current.scrollX + totalDx / zoomAtStart, panStart.current.scrollY + totalDy / zoomAtStart)
 
       lastPanPos.current = { x: e.clientX, y: e.clientY }
     },
@@ -130,53 +130,78 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement>) {
       const dx = touch2.clientX - touch1.clientX
       const dy = touch2.clientY - touch1.clientY
       pinchDistance.current = Math.sqrt(dx * dx + dy * dy)
+      pinchMidpoint.current = {
+        x: (touch1.clientX + touch2.clientX) / 2,
+        y: (touch1.clientY + touch2.clientY) / 2,
+      }
     }
   }, [])
 
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
-      if (e.touches.length === 2 && pinchDistance.current && space) {
-        e.preventDefault()
+      if (e.touches.length !== 2 || !pinchDistance.current || !space) return
 
-        const touch1 = e.touches[0]
-        const touch2 = e.touches[1]
-        const dx = touch2.clientX - touch1.clientX
-        const dy = touch2.clientY - touch1.clientY
-        const newDistance = Math.sqrt(dx * dx + dy * dy)
+      e.preventDefault()
 
-        const scale = newDistance / pinchDistance.current
-        const oldZoom = space.zoom
-        const newZoom = clampZoom(oldZoom * scale)
+      const touch1 = e.touches[0]
+      const touch2 = e.touches[1]
+      const dx = touch2.clientX - touch1.clientX
+      const dy = touch2.clientY - touch1.clientY
+      const newDistance = Math.sqrt(dx * dx + dy * dy)
 
-        if (newZoom !== oldZoom) {
-          // Zoom toward midpoint of touches
-          const rect = containerRef.current?.getBoundingClientRect()
-          if (!rect) return
+      const scale = newDistance / pinchDistance.current
+      const oldZoom = space.zoom
+      const newZoom = clampZoom(oldZoom * scale)
 
-          const midX = (touch1.clientX + touch2.clientX) / 2 - rect.left
-          const midY = (touch1.clientY + touch2.clientY) / 2 - rect.top
+      const rect = containerRef.current?.getBoundingClientRect()
+      if (!rect) return
 
-          const newScroll = zoomTowardPoint(
-            midX,
-            midY,
-            oldZoom,
-            newZoom,
-            space.scrollX,
-            space.scrollY
-          )
+      const newMidScreenX = (touch1.clientX + touch2.clientX) / 2
+      const newMidScreenY = (touch1.clientY + touch2.clientY) / 2
+      const midX = newMidScreenX - rect.left
+      const midY = newMidScreenY - rect.top
 
-          setZoom(newZoom)
-          setPan(newScroll.x, newScroll.y)
-        }
+      let nextZoom = oldZoom
+      let nextScrollX = space.scrollX
+      let nextScrollY = space.scrollY
 
-        pinchDistance.current = newDistance
+      // Zoom toward midpoint of touches
+      if (newZoom !== oldZoom) {
+        const zoomScroll = zoomTowardPoint(
+          midX,
+          midY,
+          oldZoom,
+          newZoom,
+          nextScrollX,
+          nextScrollY
+        )
+        nextZoom = newZoom
+        nextScrollX = zoomScroll.x
+        nextScrollY = zoomScroll.y
       }
+
+      // Pan as the midpoint moves (2-finger pan)
+      if (pinchMidpoint.current) {
+        const dxMid = newMidScreenX - pinchMidpoint.current.x
+        const dyMid = newMidScreenY - pinchMidpoint.current.y
+        nextScrollX += dxMid / nextZoom
+        nextScrollY += dyMid / nextZoom
+      }
+
+      if (nextZoom !== oldZoom) {
+        setZoom(nextZoom)
+      }
+      setPan(nextScrollX, nextScrollY)
+
+      pinchDistance.current = newDistance
+      pinchMidpoint.current = { x: newMidScreenX, y: newMidScreenY }
     },
     [space, containerRef, setZoom, setPan]
   )
 
   const handleTouchEnd = useCallback(() => {
     pinchDistance.current = null
+    pinchMidpoint.current = null
   }, [])
 
   // Keyboard shortcuts
