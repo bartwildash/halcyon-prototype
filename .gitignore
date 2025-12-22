@@ -23,5 +23,3 @@ dist-ssr
 *.sln
 *.sw?
 
-# Personal configuration (keep your setup private)
-src/config/personal.ts

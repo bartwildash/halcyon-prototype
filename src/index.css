@@ -1,87 +1,75 @@
-/* Halcyon Global Styles - Monochrome-First */
-
-:root {
-  font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light;
-  color: #000000;
-  background-color: #ffffff;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
 * {
-  box-sizing: border-box;
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background: #f8f8f8;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
+  background: #fdfbf7;
+  color: #374151;
 }
 
 #root {
-  height: 100vh;
   width: 100vw;
+  height: 100vh;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 700;
-  line-height: 1.2;
+/* PERIPHERAL ANIMATIONS */
+@keyframes peripheral-bloom {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
-button {
-  border-radius: 8px;
-  border: 2px solid #000000;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #ffffff;
-  color: #000000;
-  cursor: pointer;
-  transition: all 150ms ease;
+@keyframes ripple {
+  0% { box-shadow: 0 0 0 0 rgba(var(--p-color), 0.5); }
+  100% { box-shadow: 0 0 0 24px rgba(var(--p-color), 0); }
 }
 
-button:hover {
-  background-color: #f0f0f0;
-  transform: translateY(-1px);
+@keyframes type-in {
+  from { width: 0; }
+  to { width: 100%; }
 }
 
-button:active {
-  transform: translateY(0);
+.peripheral-chip {
+  animation: peripheral-bloom 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-button:focus-visible {
-  outline: 3px solid #000000;
-  outline-offset: 2px;
+.peripheral-port:active {
+  transform: scale(0.9);
 }
 
-/* Halcyon Bench - Spatial canvas background */
-.halcyon-bench {
-  background-color: var(--bench-bg-color, #f5f5f5);
+/* WINAMP INTEGRATION */
+/* Ensure Webamp's UI is interactive and doesn't interfere with ReactFlow */
+.react-flow__node[data-type="winamp"] {
+  pointer-events: auto;
 }
 
-/* Calm theme bench color */
-[data-theme="calm"] .halcyon-bench {
-  background-color: var(--bench-bg-color, #f4e2c4);
+.react-flow__node[data-type="winamp"] > * {
+  pointer-events: auto;
 }
 
-/* Spatial Canvas Animations */
-@keyframes focus-ring-pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.8), 0 0 30px rgba(59, 130, 246, 0.5);
-  }
+/* Webamp creates its own window structure - ensure it's clickable */
+.react-flow__node[data-type="winamp"] canvas,
+.react-flow__node[data-type="winamp"] button,
+.react-flow__node[data-type="winamp"] input {
+  pointer-events: auto;
+  cursor: default;
+}
+
+/* Force Webamp to render inline within its container instead of fixed positioning */
+.webamp-container #webamp {
+  position: relative !important;
+}
+
+.webamp-container #webamp > div {
+  position: absolute !important;
+  transform: none !important;
 }
