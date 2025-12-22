@@ -1,16 +1,16 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import {
-  ReactFlow,
-  Background,
+import { 
+  ReactFlow, 
+  Background, 
   Controls,
   MiniMap,
-  useNodesState,
-  useEdgesState,
+  useNodesState, 
+  useEdgesState, 
   addEdge,
   Panel,
   useReactFlow,
   ReactFlowProvider,
-  Handle,
+  Handle, 
   Position
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -49,7 +49,16 @@ import { usePeripheralCables } from './hooks/usePeripheralCables';
 import { PeripheralCable } from './components/edges/PeripheralCable';
 
 // --- COLLISION DETECTION ---
-import { calculateRepulsionForce, findValidPosition } from './utils/collisionDetection';
+import { calculateRepulsionForce, findValidPosition, checkCollision, calculateAdaptivePadding } from './utils/collisionDetection';
+
+// --- SPATIAL LAYOUT ---
+import { 
+  distributeNodesByCategory, 
+  layoutNodesInDistrict, 
+  getNodeCategory,
+  NODE_CATEGORIES,
+  DISTRICT_CATEGORIES 
+} from './utils/spatialLayout';
 
 // ==========================================
 // 1. DATA & CONSTANTS
@@ -97,7 +106,7 @@ const TerminalDrawer = ({ logs }) => {
     <motion.div 
       initial={{ height: 40 }}
       animate={{ height: open ? 300 : 40 }}
-      style={{ 
+          style={{ 
         position: 'fixed', bottom: 0, left: 0, right: 0, 
         background: '#1e293b', color: '#33ff00', 
         fontFamily: 'monospace', zIndex: 9999,
@@ -120,7 +129,7 @@ const TerminalDrawer = ({ logs }) => {
           <div key={i} style={{ marginBottom: 4 }}>{log}</div>
         ))}
         <div style={{ marginTop: 10, color: '#fff' }}>_</div>
-      </div>
+    </div>
     </motion.div>
   );
 };
@@ -170,7 +179,7 @@ const PlacesDock = () => {
 
   // When collapsed, show only trifold icon
   if (collapsed) {
-    return (
+  return (
       <Panel position="bottom-center" style={{ marginBottom: 80 }}>
         <motion.button
           onClick={handleToggle}
@@ -185,8 +194,8 @@ const PlacesDock = () => {
             backdropFilter: 'blur(12px)',
             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
             cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
+        display: 'flex',
+        alignItems: 'center',
             justifyContent: 'center',
             color: '#64748b'
           }}
@@ -227,7 +236,7 @@ const PlacesDock = () => {
             border: 'none',
             background: 'transparent',
             cursor: 'pointer',
-            display: 'flex',
+      display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: '#64748b',
@@ -240,12 +249,12 @@ const PlacesDock = () => {
         {/* Places label - only show on desktop when expanded */}
         {!isMobile && (
           <>
-            <div style={{ 
+    <div style={{
               display: 'flex', alignItems: 'center', gap: 8, 
               padding: '0 12px', cursor: 'default', color: '#64748b' 
             }}>
               <Map size={18} />
-              {expanded && (
+      {expanded && (
                 <motion.span 
                   initial={{ opacity: 0, width: 0 }} 
                   animate={{ opacity: 1, width: 'auto' }}
@@ -333,10 +342,10 @@ const UniverseLayer = () => {
   const audioSource = universe.audio?.reactive 
     ? (universe.audio.source === 'playing-audio' ? 'element' : 'none')
     : 'none';
-  
+
   return (
     <Panel position="top-left" style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
-      <div style={{
+    <div style={{ 
         width: '100vw',
         height: '100vh',
         mixBlendMode: 'overlay',
@@ -365,17 +374,18 @@ const UniverseLayer = () => {
 // 6. MAIN WORKSPACE COMPONENT
 // ==========================================
 function SpatialWorkspace() {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [nodes, setNodes, onNodesChangeBase] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [logs, setLogs] = useState(["> Terra OS v1.0 initialized...", "> Waiting for agent authorization..."]);
   const { setCenter, getNodes } = useReactFlow();
-  
+  const [draggingNodeId, setDraggingNodeId] = useState(null);
+
   // Helper to add logs from inside nodes
   const addLog = useCallback((msg) => setLogs(p => [...p, msg]), []);
 
   // Enable Persistence
   usePersistence(nodes, setNodes, edges, setEdges);
-
+  
   // Activate Auto-Cabling Hook
   usePeripheralCables();
 
@@ -391,6 +401,13 @@ function SpatialWorkspace() {
       addLog(`> Navigation: Entering ${node.data.label} District`);
     }
   }, [setCenter, addLog]);
+
+  // Track when dragging starts
+  const onNodeDragStart = useCallback((event, node) => {
+    if (node.type !== 'district' && node.draggable !== false) {
+      setDraggingNodeId(node.id);
+    }
+  }, []);
 
   // MAGNETIC REPULSION DURING DRAG
   const onNodeDrag = useCallback((event, node) => {
@@ -409,34 +426,41 @@ function SpatialWorkspace() {
     
     otherNodes.forEach(otherNode => {
       const repulsion = calculateRepulsionForce(node, otherNode, allNodes);
-      if (repulsion.strength > 0.1) {
-        totalRepulsionX += repulsion.deltaX * repulsion.strength * 0.3; // Damping factor
-        totalRepulsionY += repulsion.deltaY * repulsion.strength * 0.3;
+      if (repulsion.strength > 0.05) {
+        // Increased damping from 0.3 to 0.5 for stronger repulsion
+        totalRepulsionX += repulsion.deltaX * repulsion.strength * 0.5;
+        totalRepulsionY += repulsion.deltaY * repulsion.strength * 0.5;
       }
     });
     
-    // Apply repulsion to node position (subtle, feels like resistance)
-    if (Math.abs(totalRepulsionX) > 0.5 || Math.abs(totalRepulsionY) > 0.5) {
-      setNodes((nds) => nds.map((n) => 
-        n.id === node.id 
-          ? { ...n, position: { 
-              x: n.position.x + totalRepulsionX, 
-              y: n.position.y + totalRepulsionY 
-            }}
-          : n
-      ));
+    // Apply repulsion to node position (feels like magnetic resistance)
+    if (Math.abs(totalRepulsionX) > 0.1 || Math.abs(totalRepulsionY) > 0.1) {
+      // Use requestAnimationFrame to ensure smooth updates
+      requestAnimationFrame(() => {
+        setNodes((nds) => nds.map((n) => 
+          n.id === node.id 
+            ? { ...n, position: { 
+                x: n.position.x + totalRepulsionX, 
+                y: n.position.y + totalRepulsionY 
+              }}
+            : n
+        ));
+      });
     }
   }, [getNodes, setNodes]);
 
   // SNAP TO VALID POSITION ON RELEASE
   const onNodeDragStop = useCallback((event, node) => {
+    setDraggingNodeId(null);
     if (node.type === 'district' || node.draggable === false) return;
     
     const allNodes = getNodes();
     const validPos = findValidPosition(node, allNodes, node.position);
     
-    // Animate to valid position if different
-    if (validPos.x !== node.position.x || validPos.y !== node.position.y) {
+    // Snap to valid position if different (with small threshold to avoid jitter)
+    const threshold = 1;
+    if (Math.abs(validPos.x - node.position.x) > threshold || 
+        Math.abs(validPos.y - node.position.y) > threshold) {
       setNodes((nds) => nds.map((n) => 
         n.id === node.id 
           ? { ...n, position: validPos }
@@ -445,35 +469,116 @@ function SpatialWorkspace() {
     }
   }, [getNodes, setNodes]);
 
+  // Enhanced onNodesChange with collision handling during drag
+  const onNodesChange = useCallback((changes) => {
+    onNodesChangeBase(changes);
+    
+    // Apply repulsion if a node is being dragged
+    if (draggingNodeId) {
+      const allNodes = getNodes();
+      const draggedNode = allNodes.find(n => n.id === draggingNodeId);
+      
+      if (draggedNode && draggedNode.type !== 'district' && draggedNode.draggable !== false) {
+        const otherNodes = allNodes.filter(n => 
+          n.id !== draggedNode.id && 
+          n.type !== 'district' && 
+          n.parentNode === draggedNode.parentNode
+        );
+        
+        let totalRepulsionX = 0;
+        let totalRepulsionY = 0;
+        
+        otherNodes.forEach(otherNode => {
+          const repulsion = calculateRepulsionForce(draggedNode, otherNode, allNodes);
+          if (repulsion.strength > 0.05) {
+            totalRepulsionX += repulsion.deltaX * repulsion.strength * 0.4;
+            totalRepulsionY += repulsion.deltaY * repulsion.strength * 0.4;
+          }
+        });
+        
+        // Apply repulsion if significant
+        if (Math.abs(totalRepulsionX) > 0.5 || Math.abs(totalRepulsionY) > 0.5) {
+          requestAnimationFrame(() => {
+            setNodes((nds) => nds.map((n) => 
+              n.id === draggedNode.id 
+                ? { ...n, position: { 
+                    x: n.position.x + totalRepulsionX, 
+                    y: n.position.y + totalRepulsionY 
+                  }}
+                : n
+            ));
+          });
+        }
+      }
+    }
+  }, [onNodesChangeBase, draggingNodeId, getNodes, setNodes]);
+
+  // FIX INITIAL OVERLAPS ON LOAD
+  const fixInitialOverlaps = useCallback(() => {
+    const allNodes = getNodes();
+    const nodesToFix = allNodes.filter(n => 
+      n.type !== 'district' && 
+      n.draggable !== false
+    );
+    
+    let hasChanges = false;
+    const updatedNodes = nodesToFix.map(node => {
+      const otherNodes = allNodes.filter(n => 
+        n.id !== node.id && 
+        n.type !== 'district' && 
+        n.parentNode === node.parentNode
+      );
+      
+      // Check for collisions
+      let hasCollision = false;
+      for (const otherNode of otherNodes) {
+        const padding = calculateAdaptivePadding(node, otherNode);
+        const collision = checkCollision(node, otherNode, padding);
+        if (collision.colliding) {
+          hasCollision = true;
+          break;
+        }
+      }
+      
+      if (hasCollision) {
+        hasChanges = true;
+        const validPos = findValidPosition(node, allNodes, node.position);
+        return { ...node, position: validPos };
+      }
+      return node;
+    });
+    
+    if (hasChanges) {
+      setNodes((nds) => nds.map(n => {
+        const updated = updatedNodes.find(un => un.id === n.id);
+        return updated || n;
+      }));
+    }
+  }, [getNodes, setNodes]);
+
   // INITIAL STATE SETUP
   useEffect(() => {
     setNodes((prevNodes) => {
-      // Structure definition
-      const initialStructure = [
-      // --- DISTRICTS (The Containers) ---
-      // Study (Productivity) - Top Left
-      { id: 'd-study', type: 'district', position: { x: 0, y: 0 }, draggable: false, data: { label: 'Study', icon: <BookOpen size={14} />, color: '#f0f9ff' }, style: { width: 1000, height: 1000 } },
+      if (prevNodes.length > 0) return prevNodes; // Don't reset if nodes already exist
       
-      // Studio (Creativity) - Top Right (Shifted to 1200)
-      { id: 'd-studio', type: 'district', position: { x: 1200, y: 0 }, draggable: false, data: { label: 'Studio', icon: <Palette size={14} />, color: '#fdf4ff' }, style: { width: 1200, height: 1000 } },
+      // --- STEP 1: Define Districts ---
+      const districts = [
+        { id: 'd-study', type: 'district', position: { x: 0, y: 0 }, draggable: false, data: { label: 'Study', icon: <BookOpen size={14} />, color: '#f0f9ff' }, style: { width: 1000, height: 1000 } },
+        { id: 'd-studio', type: 'district', position: { x: 1200, y: 0 }, draggable: false, data: { label: 'Studio', icon: <Palette size={14} />, color: '#fdf4ff' }, style: { width: 1200, height: 1000 } },
+        { id: 'd-strategy', type: 'district', position: { x: 0, y: 1200 }, draggable: false, data: { label: 'Strategy', icon: <Compass size={14} />, color: '#f0fdf4' }, style: { width: 1000, height: 800 } },
+        { id: 'd-garden', type: 'district', position: { x: 1200, y: 1200 }, draggable: false, data: { label: 'Garden', icon: <Sprout size={14} />, color: '#fffbeb' }, style: { width: 1200, height: 800 } },
+        { id: 'd-toyroom', type: 'district', position: { x: 0, y: 2200 }, draggable: false, data: { label: 'Toy Room', icon: <Box size={14} />, color: '#fef3c7' }, style: { width: 2400, height: 800 } },
+      ];
       
-      // Strategy (Planning) - Bottom Left
-      { id: 'd-strategy', type: 'district', position: { x: 0, y: 1200 }, draggable: false, data: { label: 'Strategy', icon: <Compass size={14} />, color: '#f0fdf4' }, style: { width: 1000, height: 800 } },
-      
-      // Garden (People) - Bottom Right
-      { id: 'd-garden', type: 'district', position: { x: 1200, y: 1200 }, draggable: false, data: { label: 'Garden', icon: <Sprout size={14} />, color: '#fffbeb' }, style: { width: 1200, height: 800 } },
-      
-      // Toy Room (Play) - Bottom Wide
-      { id: 'd-toyroom', type: 'district', position: { x: 0, y: 2200 }, draggable: false, data: { label: 'Toy Room', icon: <Box size={14} />, color: '#fef3c7' }, style: { width: 2400, height: 800 } },
-
-      // --- STUDY DISTRICT CONTENT (0,0) ---
-      // Agent (Top Left)
-      { id: 'a2', type: 'agent', position: { x: 50, y: 100 }, parentNode: 'd-study', data: { label: 'Sentiment Analysis', provider: 'OpenAI', icon: <Cpu color="#4b5563" size={16}/>, color: '#f3f4f6', log: addLog, utilityIds: ['analyze-sentiment'], requiredUtilities: ['capture-audio'] } },
-      
-      // Graph View (Center)
-      {
-        id: 'graph1', type: 'graph', position: { x: 100, y: 350 }, parentNode: 'd-study', style: { width: 500, height: 400 },
-        data: {
+      // --- STEP 2: Define All Nodes (without positions initially) ---
+      const allNodes = [
+        // PRODUCTIVITY NODES (Study & Strategy)
+        { id: 'a2', type: 'agent', position: { x: 0, y: 0 }, parentNode: 'd-study', data: { label: 'Sentiment Analysis', provider: 'OpenAI', icon: <Cpu color="#4b5563" size={16}/>, color: '#f3f4f6', log: addLog, utilityIds: ['analyze-sentiment'], requiredUtilities: ['capture-audio'] } },
+        { id: 'a1', type: 'agent', position: { x: 0, y: 0 }, parentNode: 'd-strategy', data: { label: 'Payment Terminal', provider: 'Adyen', icon: <Mail color="#4b5563" size={16}/>, color: '#f3f4f6', log: addLog, utilityIds: ['scan-nfc', 'make-payment'], requiredUtilities: ['scan-nfc'] } },
+        { id: 'a3', type: 'agent', position: { x: 0, y: 0 }, parentNode: 'd-study', data: { label: 'Code Review', provider: 'GitHub', icon: <Database color="#4b5563" size={16}/>, color: '#f3f4f6', log: addLog, utilityIds: ['review-code'] } },
+        {
+          id: 'graph1', type: 'graph', position: { x: 0, y: 0 }, parentNode: 'd-study', style: { width: 500, height: 400 },
+        data: { 
           nodes: [
             { id: 'n1', label: 'Payment Terminal', type: 'agent', x: 100, y: 100 },
             { id: 'n2', label: 'Sentiment Analysis', type: 'agent', x: 300, y: 100 },
@@ -490,91 +595,105 @@ function SpatialWorkspace() {
           ]
         }
       },
+        { id: 'matrix1', type: 'matrix', position: { x: 0, y: 0 }, parentNode: 'd-strategy', style: { width: 500, height: 500 } },
+        { id: 'm1', type: 'metric', position: { x: 0, y: 0 }, parentNode: 'd-strategy', data: { label: 'Monthly Revenue', value: '$12,450', unit: 'USD' } },
+        { id: 'm2', type: 'metric', position: { x: 0, y: 0 }, parentNode: 'd-strategy', data: { label: 'Active Users', value: '1,234', unit: 'users' } },
+        { id: 'm3', type: 'metric', position: { x: 0, y: 0 }, parentNode: 'd-study', data: { label: 'Tasks Completed', value: '42', unit: 'tasks' } },
+        { id: 'note1', type: 'note', position: { x: 0, y: 0 }, parentNode: 'd-study', data: { content: 'Research notes on spatial computing...', title: 'Spatial OS Research' } },
+        { id: 'note2', type: 'note', position: { x: 0, y: 0 }, parentNode: 'd-study', data: { content: 'Meeting notes from design review...', title: 'Design Review' } },
+        { id: 'task1', type: 'task', position: { x: 0, y: 0 }, parentNode: 'd-study', data: { title: 'Implement collision detection', completed: false } },
+        { id: 'task2', type: 'task', position: { x: 0, y: 0 }, parentNode: 'd-study', data: { title: 'Review PR #123', completed: false } },
+        
+        // TIME NODES (Study)
+        { id: 'time1', type: 'pomodoro', position: { x: 0, y: 0 }, parentNode: 'd-study' },
+        { id: 'flipclock1', type: 'flipclock', position: { x: 0, y: 0 }, parentNode: 'd-study' },
+        
+        // CREATIVE NODES (Studio)
+        { 
+          id: 'app1', type: 'app', position: { x: 0, y: 0 }, parentNode: 'd-studio', style: { width: 600, height: 400 },
+          data: { title: 'Arc Browser', type: 'browser', url: 'skins.webamp.org', contentTitle: 'Winamp Skins', image: 'https://placehold.co/600x200/EEE/31343C?text=Winamp+Skins', constraints: { allowNavigation: false } } 
+        },
+        { id: 'shader1', type: 'shader', position: { x: 0, y: 0 }, parentNode: 'd-studio', data: { presetId: 'synthwave-pulse' } },
+        { id: 'shader2', type: 'shader', position: { x: 0, y: 0 }, parentNode: 'd-studio', data: { presetId: 'focus-rain' } },
+        { id: 'shader3', type: 'shader', position: { x: 0, y: 0 }, parentNode: 'd-studio', data: { presetId: 'organic-flow' } },
+        { id: 'image1', type: 'image', position: { x: 0, y: 0 }, parentNode: 'd-studio', data: { url: 'https://placehold.co/400x300/EEE/31343C?text=Creative+Work', title: 'Inspiration' } },
+        
+        // SYSTEM NODES (Studio)
+        { 
+          id: 'device-hub', type: 'device', position: { x: 0, y: 0 }, parentNode: 'd-studio', draggable: true,
+          data: { label: 'Local Peripherals', onConnect: (deviceId) => addLog(`> Device Hub: Connected ${deviceId}`) } 
+        },
+        { id: 'stack1', type: 'stack', position: { x: 0, y: 0 }, parentNode: 'd-studio', data: { label: 'Project Files', items: ['design.psd', 'mockup.fig', 'notes.md'] } },
+        
+        // SOCIAL NODES (Garden)
+        {
+          id: 'contacts-stack', type: 'contactsStack', position: { x: 0, y: 0 }, parentNode: 'd-garden',
+          data: { label: 'All Contacts', contacts: [{ name: 'Graham McBride', initials: 'GM', color: '#fbbf24' }, { name: 'Brian Carey', image: 'https://i.pravatar.cc/150?u=brian' }] }
+        },
+        { id: 'c-graham', type: 'contact', position: { x: 0, y: 0 }, parentNode: 'd-garden', data: { name: 'Graham McBride', initials: 'GM', color: '#fbbf24', online: true } },
+        { id: 'c-brian', type: 'contact', position: { x: 0, y: 0 }, parentNode: 'd-garden', data: { name: 'Brian Carey', image: 'https://i.pravatar.cc/150?u=brian', online: true } },
+        { id: 'c-darla', type: 'contact', position: { x: 0, y: 0 }, parentNode: 'd-garden', data: { name: 'Darla Davidson', image: 'https://i.pravatar.cc/150?u=darla', online: true, role: 'PM' } },
+        { id: 'c-ashley', type: 'contact', position: { x: 0, y: 0 }, parentNode: 'd-garden', data: { name: 'Ashley Rice', image: 'https://i.pravatar.cc/150?u=ashley' } },
+        { id: 'c-maya', type: 'contact', position: { x: 0, y: 0 }, parentNode: 'd-garden', data: { name: 'Dr. Maya Patel', initials: 'MP', color: '#fce7f3', role: 'Research Lead', online: true } },
+        { id: 'c-james', type: 'contact', position: { x: 0, y: 0 }, parentNode: 'd-garden', data: { name: 'Prof. James Wu', initials: 'JW', color: '#dbeafe', role: 'Advisor' } },
+        { id: 'act-link', type: 'action', position: { x: 0, y: 0 }, parentNode: 'd-garden', data: { label: 'FaceTime Link', icon: <LinkIcon size={28} />, color: '#94a3b8' } },
+        { id: 'p-to-studio', type: 'portal', position: { x: 0, y: 0 }, parentNode: 'd-garden', data: { destinationName: 'Studio District', targetX: 1600, targetY: 500, log: addLog } },
+        
+        // PLAY NODES (Toy Room)
+        { id: 'toy-chess', type: 'chess', position: { x: 0, y: 0 }, parentNode: 'd-toyroom', data: { playerColor: 'white', fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' } },
+        { id: 'toy-synth', type: 'synth', position: { x: 0, y: 0 }, parentNode: 'd-toyroom', data: { waveform: 'sine', frequency: 440 } },
+        { id: 'toy-drums', type: 'drummachine', position: { x: 0, y: 0 }, parentNode: 'd-toyroom', data: { bpm: 120 } },
+        { id: 'sticker-pack-1', type: 'stickerpack', position: { x: 0, y: 0 }, parentNode: 'd-toyroom', data: { packName: 'Retro GIFs', stickers: [{ name: 'Nyan Cat', url: 'https://media.giphy.com/media/sIIhZAKj2rPtK/giphy.gif' }, { name: 'Dancing Banana', url: 'https://media.giphy.com/media/IB9foBA4PVkKA/giphy.gif' }] } },
+        {
+          id: 'winamp1', type: 'winamp', position: { x: 0, y: 0 }, parentNode: 'd-toyroom',
+          data: { tracks: [], skinUrl: "/skins/Nucleo-NLog-2G1.wsz", enableButterchurn: true }
+        },
+        {
+          id: 'butterchurn1', type: 'butterchurn', position: { x: 0, y: 0 }, parentNode: 'd-toyroom',
+          data: { width: 400, height: 300, audioSource: 'webamp', presetName: 'Default' }
+        },
+        {
+          id: 'skinbrowser1', type: 'skinbrowser', position: { x: 0, y: 0 }, parentNode: 'd-toyroom',
+          data: { onSkinSelect: (skin) => { setNodes((nds) => nds.map((n) => n.id === 'winamp1' ? { ...n, data: { ...n.data, skinUrl: skin.url } } : n)); } }
+        },
+        { id: 'shader4', type: 'shader', position: { x: 0, y: 0 }, parentNode: 'd-toyroom', data: { presetId: 'synthwave-pulse' } },
+      ];
       
-      // Portals (Top Right)
-      { id: 'p-to-studio', type: 'portal', position: { x: 800, y: 100 }, parentNode: 'd-study', data: { destinationName: 'Studio District', targetX: 1600, targetY: 500, log: addLog } },
+      // --- STEP 3: Distribute nodes by category to districts ---
+      const distribution = distributeNodesByCategory(allNodes, districts);
       
-      // Collaborators (Right Side)
-      { id: 'c-study-1', type: 'contact', position: { x: 750, y: 250 }, parentNode: 'd-study', data: { name: 'Dr. Maya Patel', initials: 'MP', color: '#fce7f3', role: 'Research Lead', online: true } },
-      { id: 'c-study-2', type: 'contact', position: { x: 750, y: 380 }, parentNode: 'd-study', data: { name: 'Prof. James Wu', initials: 'JW', color: '#dbeafe', role: 'Advisor' } },
-
-      // --- STUDIO DISTRICT CONTENT (1200,0) ---
-      // Arc Browser (Top Left)
-      { 
-        id: 'app1', type: 'app', position: { x: 50, y: 50 }, parentNode: 'd-studio', style: { width: 600, height: 400 },
-        data: { title: 'Arc Browser', type: 'browser', url: 'skins.webamp.org', contentTitle: 'Winamp Skins', image: 'https://placehold.co/600x200/EEE/31343C?text=Winamp+Skins', constraints: { allowNavigation: false } } 
-      },
+      // --- STEP 4: Layout nodes within each district ---
+      const finalNodes = [...districts];
       
-      // Pomodoro & Clock (Top Right)
-      { id: 'time1', type: 'pomodoro', position: { x: 800, y: 50 }, parentNode: 'd-studio' },
-      { id: 'flipclock1', type: 'flipclock', position: { x: 800, y: 300 }, parentNode: 'd-studio' },
+      districts.forEach(district => {
+        const districtNodes = distribution[district.id] || [];
+        if (districtNodes.length > 0) {
+          const laidOutNodes = layoutNodesInDistrict(districtNodes, district, { 
+            mode: 'flow', 
+            spacing: 80, 
+            startX: 50, 
+            startY: 50 
+          });
+          finalNodes.push(...laidOutNodes);
+        }
+      });
       
-      // Winamp (Bottom Left)
-      {
-        id: 'winamp1', type: 'winamp', position: { x: 50, y: 550 }, parentNode: 'd-studio',
-        data: { tracks: [], skinUrl: "/skins/Nucleo-NLog-2G1.wsz", enableButterchurn: true }
-      },
-      
-      // Visualizer (Center Bottom)
-      {
-        id: 'butterchurn1', type: 'butterchurn', position: { x: 400, y: 550 }, parentNode: 'd-studio',
-        data: { width: 400, height: 300, audioSource: 'webamp', presetName: 'Default' }
-      },
-      
-      // Skin Browser (Right Bottom)
-      {
-        id: 'skinbrowser1', type: 'skinbrowser', position: { x: 850, y: 550 }, parentNode: 'd-studio',
-        data: { onSkinSelect: (skin) => { setNodes((nds) => nds.map((n) => n.id === 'winamp1' ? { ...n, data: { ...n.data, skinUrl: skin.url } } : n)); } }
-      },
-      
-      // Shaders (Far Right Column)
-      { id: 'shader1', type: 'shader', position: { x: 1100, y: 50 }, parentNode: 'd-studio', data: { presetId: 'synthwave-pulse' } },
-      { id: 'shader2', type: 'shader', position: { x: 1100, y: 350 }, parentNode: 'd-studio', data: { presetId: 'focus-rain' } },
-
-      // Device Hub (Bottom Corner)
-      { 
-        id: 'device-hub', type: 'device', position: { x: 50, y: 850 }, parentNode: 'd-studio', draggable: true,
-        data: { label: 'Local Peripherals', onConnect: (deviceId) => addLog(`> Device Hub: Connected ${deviceId}`) } 
-      },
-
-      // --- STRATEGY DISTRICT CONTENT (0, 1200) ---
-      // Payment Agent
-      { 
-        id: 'a1', type: 'agent', position: { x: 100, y: 100 }, parentNode: 'd-strategy', 
-        data: { label: 'Payment Terminal', provider: 'Adyen', icon: <Mail color="#4b5563" size={16}/>, color: '#f3f4f6', log: addLog, utilityIds: ['scan-nfc', 'make-payment'], requiredUtilities: ['scan-nfc'] } 
-      },
-      // Eisenhower Matrix (Central)
-      { id: 'matrix1', type: 'matrix', position: { x: 400, y: 100 }, parentNode: 'd-strategy', style: { width: 500, height: 500 } },
-      // Metric (Left)
-      { id: 'm1', type: 'metric', position: { x: 100, y: 300 }, parentNode: 'd-strategy', data: { label: 'Monthly Revenue', value: '$12,450', unit: 'USD' } },
-
-      // --- GARDEN DISTRICT CONTENT (1200, 1200) ---
-      // Contacts Stack (Top Center)
-      {
-        id: 'contacts-stack', type: 'contactsStack', position: { x: 500, y: 50 }, parentNode: 'd-garden',
-        data: { label: 'All Contacts', contacts: [{ name: 'Graham McBride', initials: 'GM', color: '#fbbf24' }, { name: 'Brian Carey', image: 'https://i.pravatar.cc/150?u=brian' }] }
-      },
-      // Scatter Contacts
-      { id: 'c-graham', type: 'contact', position: { x: 100, y: 250 }, parentNode: 'd-garden', data: { name: 'Graham McBride', initials: 'GM', color: '#fbbf24', online: true } },
-      { id: 'c-brian', type: 'contact', position: { x: 300, y: 200 }, parentNode: 'd-garden', data: { name: 'Brian Carey', image: 'https://i.pravatar.cc/150?u=brian', online: true } },
-      { id: 'c-darla', type: 'contact', position: { x: 600, y: 220 }, parentNode: 'd-garden', data: { name: 'Darla Davidson', image: 'https://i.pravatar.cc/150?u=darla', online: true, role: 'PM' } },
-      { id: 'c-ashley', type: 'contact', position: { x: 800, y: 250 }, parentNode: 'd-garden', data: { name: 'Ashley Rice', image: 'https://i.pravatar.cc/150?u=ashley' } },
-      { id: 'act-link', type: 'action', position: { x: 450, y: 450 }, parentNode: 'd-garden', data: { label: 'FaceTime Link', icon: <LinkIcon size={28} />, color: '#94a3b8' } },
-
-      // --- TOY ROOM CONTENT (0, 2200) ---
-      // Chess (Left)
-      { id: 'toy-chess', type: 'chess', position: { x: 100, y: 100 }, parentNode: 'd-toyroom', data: { playerColor: 'white', fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' } },
-      // Synth (Left Center)
-      { id: 'toy-synth', type: 'synth', position: { x: 550, y: 100 }, parentNode: 'd-toyroom', data: { waveform: 'sine', frequency: 440 } },
-      // Drum Machine (Right Center)
-      { id: 'toy-drums', type: 'drummachine', position: { x: 900, y: 100 }, parentNode: 'd-toyroom', data: { bpm: 120 } },
-      // Sticker Pack (Right)
-      { id: 'sticker-pack-1', type: 'stickerpack', position: { x: 1400, y: 100 }, parentNode: 'd-toyroom', data: { packName: 'Retro GIFs', stickers: [{ name: 'Nyan Cat', url: 'https://media.giphy.com/media/sIIhZAKj2rPtK/giphy.gif' }, { name: 'Dancing Banana', url: 'https://media.giphy.com/media/IB9foBA4PVkKA/giphy.gif' }] } }
-    ];
-    
-    return initialStructure;
+      return finalNodes;
   });
   }, [addLog, setNodes]);
+
+  // Fix initial overlaps after nodes are loaded (only once)
+  const [hasFixedOverlaps, setHasFixedOverlaps] = useState(false);
+  useEffect(() => {
+    if (nodes.length > 0 && !hasFixedOverlaps) {
+      // Longer delay to ensure ReactFlow has fully processed and rendered nodes
+      const timer = setTimeout(() => {
+        fixInitialOverlaps();
+        setHasFixedOverlaps(true);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [nodes.length, hasFixedOverlaps, fixInitialOverlaps]);
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#fdfbf7' }}>
@@ -582,6 +701,7 @@ function SpatialWorkspace() {
         <ReactFlow 
           nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
           onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
+          onNodeDragStart={onNodeDragStart}
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
           onNodeDoubleClick={onNodeDoubleClick}
@@ -592,7 +712,6 @@ function SpatialWorkspace() {
           <PlacesDock />
         </ReactFlow>
         <TerminalDrawer logs={logs} />
-        <Toolbelt />
     </div>
   );
 }
@@ -614,7 +733,7 @@ export default function App() {
   return (
     <ReactFlowProvider>
       <ErrorBoundary>
-        <SpatialWorkspace />
+      <SpatialWorkspace />
       </ErrorBoundary>
     </ReactFlowProvider>
   );

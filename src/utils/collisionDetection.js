@@ -13,10 +13,10 @@ const DEFAULT_NODE_SIZES = {
   app: { width: 400, height: 300 },
   metric: { width: 160, height: 120 },
   graph: { width: 500, height: 400 },
-  winamp: { width: 275, height: 116 },
+  winamp: { width: 307, height: 400 }, // Account for controls, playlist, and padding (275 + 16*2, 116 + controls + playlist space)
   butterchurn: { width: 400, height: 300 },
-  pomodoro: { width: 200, height: 200 },
-  flipclock: { width: 200, height: 100 },
+  pomodoro: { width: 228, height: 228 }, // Actual size from component
+  flipclock: { width: 300, height: 342 }, // Actual size from component
   shader: { width: 200, height: 150 },
   skinbrowser: { width: 500, height: 600 },
   matrix: { width: 500, height: 500 },
@@ -200,9 +200,9 @@ export const calculateRepulsionForce = (draggedNode, otherNode, allNodes) => {
   const normalizedDistance = distance / repulsionDistance;
   const strength = 1 - normalizedDistance; // 0 (far) to 1 (touching)
   
-  // Inverse-square repulsion force
+  // Inverse-square repulsion force (stronger for closer nodes)
   const force = (repulsionDistance - distance) / repulsionDistance;
-  const forceMagnitude = force * force * 100; // Scale for reasonable movement
+  const forceMagnitude = force * force * 150; // Increased from 100 to 150 for stronger repulsion
   
   // Normalize direction vector
   const normalizedDx = dx / distance;

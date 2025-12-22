@@ -1,0 +1,197 @@
+/* Halcyon Theme System */
+/* Base: Black & White for maximum RLCD contrast on DC-1 Daylight Computer */
+/* Optional: Calm color theme for standard displays */
+
+:root {
+  /* ========================================
+     BASE THEME (Default - Monochrome)
+     Optimized for DC-1 RLCD 60Hz display
+     ======================================== */
+
+  --halcyon-black: #000000;
+  --halcyon-white: #ffffff;
+  --halcyon-grey-100: #f8f8f8;
+  --halcyon-grey-200: #f0f0f0;
+  --halcyon-grey-300: #e0e0e0;
+  --halcyon-grey-400: #cccccc;
+  --halcyon-grey-500: #999999;
+  --halcyon-grey-600: #666666;
+  --halcyon-grey-700: #333333;
+
+  /* Functional colors (monochrome base) */
+  --color-bg: var(--halcyon-white);
+  --color-fg: var(--halcyon-black);
+  --color-border: var(--halcyon-black);
+  --color-border-subtle: var(--halcyon-grey-300);
+  --color-surface: var(--halcyon-white);
+  --color-surface-raised: var(--halcyon-white);
+  --color-surface-subtle: var(--halcyon-grey-100);
+  --color-text-primary: var(--halcyon-black);
+  --color-text-secondary: var(--halcyon-grey-600);
+  --color-text-tertiary: var(--halcyon-grey-500);
+  --color-shadow: rgba(0, 0, 0, 0.1);
+
+  /* Priority/Signal (conveyed through border weight in monochrome) */
+  --signal-background: 1px;
+  --signal-normal: 2px;
+  --signal-loud: 3px;
+  --signal-critical: 4px;
+
+  /* Energy indicators (monochrome symbols) */
+  --energy-high-focus: '⚡';
+  --energy-medium: '○';
+  --energy-low-energy: '☁';
+  --energy-social: '👥';
+
+  /* Bench background (monochrome default) */
+  --bench-bg-color: #f5f5f5;
+  --bench-texture-visible: 1;
+}
+
+/* ========================================
+   OPTIONAL CALM COLOR THEME
+   Gentle pastels for standard displays
+   Never essential - always decorative
+   Based on warm, paper-like palette
+   ======================================== */
+
+[data-theme="calm"] {
+  /* Calm color palette - warm, paper-like tones */
+  --halcyon-background: #f2f0e3;   /* Warm cream background */
+  --halcyon-foreground: #2e2e2e;   /* Dark grey text */
+  --halcyon-primary: #f76f53;      /* Coral accent */
+  --halcyon-accent: #e6e4d7;       /* Pale warm grey */
+  --halcyon-card: #f7f6ee;         /* Off-white card */
+  --halcyon-muted: #2e2e2e0b;      /* Subtle overlay */
+  --halcyon-border: #eae9e2;       /* Light border */
+  --halcyon-secondary: #e6e4d7;    /* Secondary surface */
+
+  /* Functional colors with calm tints */
+  --color-bg: var(--halcyon-background);
+  --color-fg: var(--halcyon-foreground);
+  --color-surface: var(--halcyon-card);
+  --color-surface-raised: var(--halcyon-white);
+  --color-surface-subtle: var(--halcyon-accent);
+
+  /* Borders - softer than pure black */
+  --color-border: var(--halcyon-foreground);
+  --color-border-subtle: var(--halcyon-border);
+
+  /* Text with warm undertones */
+  --color-text-primary: var(--halcyon-foreground);
+  --color-text-secondary: #595959;
+  --color-text-tertiary: #737373;
+
+  /* Accent for interactive elements */
+  --color-accent: var(--halcyon-primary);
+  --color-accent-foreground: var(--halcyon-white);
+
+  /* Shadows with warm tint */
+  --color-shadow: rgba(46, 46, 46, 0.08);
+
+  /* Bench background (warm chipboard) */
+  --bench-bg-color: #f4e2c4;
+  --bench-texture-visible: 1;
+}
+
+/* ========================================
+   DC-1 RLCD OPTIMIZATIONS
+   60Hz reflective LCD-specific tuning
+   ======================================== */
+
+@media (prefers-contrast: high) {
+  /* Enhanced contrast for RLCD */
+  :root {
+    --color-border: #000000;
+    --color-text-primary: #000000;
+    --color-bg: #ffffff;
+    --signal-normal: 3px; /* Thicker borders for clarity */
+  }
+
+  /* Force monochrome on high contrast preference */
+  [data-theme="calm"] {
+    --color-bg: var(--halcyon-white);
+    --color-surface-subtle: var(--halcyon-grey-100);
+  }
+}
+
+/* Disable color theme in direct sunlight (RLCD performs best in mono) */
+@media (prefers-color-scheme: light) and (luminosity: high) {
+  [data-theme="calm"] {
+    /* Revert to monochrome base */
+    --color-bg: var(--halcyon-white);
+    --color-surface-subtle: var(--halcyon-grey-100);
+  }
+}
+
+/* ========================================
+   THEME UTILITIES
+   ======================================== */
+
+/* Desaturation filter for calm mode (makes emojis/images less vibrant) */
+[data-theme="calm"] img,
+[data-theme="calm"] .emoji,
+[data-theme="calm"] .landmark-icon {
+  filter: saturate(0.6) brightness(0.98);
+}
+
+/* Zone-specific calm tints (optional, subtle) */
+[data-theme="calm"] [data-zone-type="work"] {
+  --zone-tint: var(--accent-work);
+}
+
+[data-theme="calm"] [data-zone-type="health"] {
+  --zone-tint: var(--accent-health);
+}
+
+[data-theme="calm"] [data-zone-type="creative"] {
+  --zone-tint: var(--accent-creative);
+}
+
+[data-theme="calm"] [data-zone-type="social"] {
+  --zone-tint: var(--accent-social);
+}
+
+/* Apply zone tints to backgrounds only */
+[data-theme="calm"] .zone-background {
+  background-color: var(--zone-tint, var(--halcyon-grey-100));
+  opacity: 0.3;
+}
+
+/* ========================================
+   ANIMATIONS (Smooth on 60Hz RLCD)
+   ======================================== */
+
+/* DC-1 RLCD refresh rate optimization */
+@media (update: slow) {
+  /* Reduce animation complexity for RLCD */
+  * {
+    animation-duration: 300ms !important;
+    transition-duration: 200ms !important;
+  }
+}
+
+/* Standard display - full animation fidelity */
+@media (update: fast) {
+  /* Keep original timing */
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+  /* Always pure black and white for printing */
+  :root,
+  [data-theme="calm"] {
+    --color-bg: white;
+    --color-fg: black;
+    --color-border: black;
+    --color-text-primary: black;
+  }
+
+  /* Remove all tints */
+  .zone-background {
+    background: white !important;
+  }
+}
