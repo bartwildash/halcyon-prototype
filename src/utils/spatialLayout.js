@@ -150,8 +150,8 @@ export function layoutOccupancy(nodes, district, options = {}) {
         
         // Check all cells this node would occupy
         for (let ir = 0; ir < heightCells; ir++) {
-          for (let ic = 0; ir < widthCells; ic++) {
-            if (grid[r + ir][c + ic]) {
+          for (let ic = 0; ic < widthCells; ic++) {
+            if (grid[r + ir] && grid[r + ir][c + ic]) {
               fits = false;
               break;
             }
